@@ -181,19 +181,37 @@ export default function App() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 py-6 relative z-1">
-        {activeTab === 'dashboard' && <Dashboard />}
-        {activeTab === 'schedule' && <MatchScheduler onFillMatch={handleFillMatch} />}
-        {activeTab === 'add' && (
-          <MatchForm 
-            onSaved={() => {
-              setPrefilledMatch(undefined);
-              setActiveTab('dashboard');
-            }} 
-            initialData={prefilledMatch}
-          />
+        {activeTab === 'dashboard' && (
+          <div className="tab-content-active">
+            <Dashboard />
+          </div>
         )}
-        {activeTab === 'history' && <MatchHistory />}
-        {activeTab === 'players' && <PlayerManagement />}
+        {activeTab === 'schedule' && (
+          <div className="tab-content-active">
+            <MatchScheduler onFillMatch={handleFillMatch} />
+          </div>
+        )}
+        {activeTab === 'add' && (
+          <div className="tab-content-active">
+            <MatchForm 
+              onSaved={() => {
+                setPrefilledMatch(undefined);
+                setActiveTab('dashboard');
+              }} 
+              initialData={prefilledMatch}
+            />
+          </div>
+        )}
+        {activeTab === 'history' && (
+          <div className="tab-content-active">
+            <MatchHistory />
+          </div>
+        )}
+        {activeTab === 'players' && (
+          <div className="tab-content-active">
+            <PlayerManagement />
+          </div>
+        )}
       </main>
 
       {/* Mobile Navigation Bar */}

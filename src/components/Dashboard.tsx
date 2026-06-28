@@ -89,13 +89,10 @@ export default function Dashboard() {
     <div className="space-y-6" id="dashboard-content">
       <Card>
         <CardHeader className="pb-4">
-          <div className="flex justify-between items-center gap-3 w-full">
-            <CardTitle className="text-sm xs:text-base sm:text-lg font-bold flex items-center gap-1.5 xs:gap-2 text-white whitespace-nowrap">
-              <Trophy className="w-4.5 h-4.5 xs:w-5 h-5 text-amber-500 flex-shrink-0" />
-              BẢNG XẾP HẠNG CHÍNH
-            </CardTitle>
-            <span className="text-[10px] xs:text-xs bg-emerald-500/20 text-emerald-400 px-1.5 py-0.5 xs:px-2 xs:py-1 rounded font-medium whitespace-nowrap flex-shrink-0">Real-time</span>
-          </div>
+          <CardTitle className="text-sm xs:text-base sm:text-lg font-bold flex items-center gap-1.5 xs:gap-2 text-white whitespace-nowrap">
+            <Trophy className="w-4.5 h-4.5 xs:w-5 h-5 text-amber-500 flex-shrink-0" />
+            BẢNG XẾP HẠNG CHÍNH
+          </CardTitle>
           <p className="text-xs text-slate-400 mt-1">Yêu cầu tối thiểu {config.minMatchesForMainBoard} trận</p>
         </CardHeader>
         <CardContent>

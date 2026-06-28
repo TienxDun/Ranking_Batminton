@@ -530,9 +530,9 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                         <select
                           value={set.team1[0]}
                           onChange={(e) => handlePlayerChange(set.id, set.team1[0], e.target.value)}
-                          className="w-full text-xs font-semibold text-teal-300 bg-teal-500/5 hover:bg-teal-500/10 px-2 py-1.5 rounded-lg border border-teal-500/10 hover:border-teal-500/30 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-5"
+                          className="w-full text-xs font-bold text-white bg-teal-950/40 hover:bg-teal-950/60 px-2.5 py-2 rounded-xl border border-teal-500/20 hover:border-teal-500/40 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-6 shadow-sm"
                         >
-                          <option value={set.team1[0]} disabled className="bg-slate-950 text-slate-300 font-bold">
+                          <option value={set.team1[0]} className="bg-slate-950 text-white font-bold">
                             {getPlayerName(set.team1[0])} {players.find(p => p.id === set.team1[0])?.gender === 'female' ? '♀' : '♂'}
                           </option>
                           {selectedIds
@@ -543,16 +543,16 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                               </option>
                             ))}
                         </select>
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-teal-500/50">▼</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-teal-400">▼</span>
                       </div>
 
                       <div className="relative">
                         <select
                           value={set.team1[1]}
                           onChange={(e) => handlePlayerChange(set.id, set.team1[1], e.target.value)}
-                          className="w-full text-xs font-semibold text-teal-300 bg-teal-500/5 hover:bg-teal-500/10 px-2 py-1.5 rounded-lg border border-teal-500/10 hover:border-teal-500/30 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-5"
+                          className="w-full text-xs font-bold text-white bg-teal-950/40 hover:bg-teal-950/60 px-2.5 py-2 rounded-xl border border-teal-500/20 hover:border-teal-500/40 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-6 shadow-sm"
                         >
-                          <option value={set.team1[1]} disabled className="bg-slate-950 text-slate-300 font-bold">
+                          <option value={set.team1[1]} className="bg-slate-950 text-white font-bold">
                             {getPlayerName(set.team1[1])} {players.find(p => p.id === set.team1[1])?.gender === 'female' ? '♀' : '♂'}
                           </option>
                           {selectedIds
@@ -563,14 +563,14 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                               </option>
                             ))}
                         </select>
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-teal-500/50">▼</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-teal-400">▼</span>
                       </div>
-                      <span className="text-[9px] uppercase tracking-wider text-teal-500 font-bold block mt-1">Đội 1</span>
+                      <span className="text-[10px] uppercase tracking-widest text-teal-400 font-extrabold block mt-1.5 animate-pulse">Đội 1</span>
                     </div>
 
                     {/* Chữ VS ở giữa */}
                     <div className="px-3 flex flex-col items-center justify-center">
-                      <span className="text-xs font-black text-slate-500 bg-white/5 h-7 w-7 rounded-full flex items-center justify-center border border-white/5 font-mono shadow-sm">
+                      <span className="text-xs font-black text-slate-200 bg-slate-950 h-7 w-7 rounded-full flex items-center justify-center border border-white/10 font-mono shadow-md">
                         VS
                       </span>
                     </div>
@@ -581,9 +581,9 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                         <select
                           value={set.team2[0]}
                           onChange={(e) => handlePlayerChange(set.id, set.team2[0], e.target.value)}
-                          className="w-full text-xs font-semibold text-indigo-300 bg-indigo-500/5 hover:bg-indigo-500/10 px-2 py-1.5 rounded-lg border border-indigo-500/10 hover:border-indigo-500/30 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-5"
+                          className="w-full text-xs font-bold text-white bg-amber-950/30 hover:bg-amber-950/50 px-2.5 py-2 rounded-xl border border-amber-500/25 hover:border-amber-500/45 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-6 shadow-sm"
                         >
-                          <option value={set.team2[0]} disabled className="bg-slate-950 text-slate-300 font-bold">
+                          <option value={set.team2[0]} className="bg-slate-950 text-white font-bold">
                             {getPlayerName(set.team2[0])} {players.find(p => p.id === set.team2[0])?.gender === 'female' ? '♀' : '♂'}
                           </option>
                           {selectedIds
@@ -594,16 +594,16 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                               </option>
                             ))}
                         </select>
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-indigo-500/50">▼</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-amber-400">▼</span>
                       </div>
 
                       <div className="relative">
                         <select
                           value={set.team2[1]}
                           onChange={(e) => handlePlayerChange(set.id, set.team2[1], e.target.value)}
-                          className="w-full text-xs font-semibold text-indigo-300 bg-indigo-500/5 hover:bg-indigo-500/10 px-2 py-1.5 rounded-lg border border-indigo-500/10 hover:border-indigo-500/30 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-5"
+                          className="w-full text-xs font-bold text-white bg-amber-950/30 hover:bg-amber-950/50 px-2.5 py-2 rounded-xl border border-amber-500/25 hover:border-amber-500/45 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-6 shadow-sm"
                         >
-                          <option value={set.team2[1]} disabled className="bg-slate-950 text-slate-300 font-bold">
+                          <option value={set.team2[1]} className="bg-slate-950 text-white font-bold">
                             {getPlayerName(set.team2[1])} {players.find(p => p.id === set.team2[1])?.gender === 'female' ? '♀' : '♂'}
                           </option>
                           {selectedIds
@@ -614,9 +614,9 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                               </option>
                             ))}
                         </select>
-                        <span className="absolute right-1.5 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-indigo-500/50">▼</span>
+                        <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-amber-400">▼</span>
                       </div>
-                      <span className="text-[9px] uppercase tracking-wider text-indigo-500 font-bold block mt-1">Đội 2</span>
+                      <span className="text-[10px] uppercase tracking-widest text-amber-400 font-extrabold block mt-1.5">Đội 2</span>
                     </div>
                   </div>
 
@@ -645,12 +645,19 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
             <CardHeader className="py-3">
               <CardTitle className="text-xs font-bold uppercase tracking-wider text-slate-400">Thống kê số lượng set đấu phân bổ</CardTitle>
             </CardHeader>
-            <CardContent className="py-2 px-4">
-              <div className="flex flex-wrap gap-2 text-[11px] text-slate-300">
+            <CardContent className="pb-4 pt-1 px-4">
+              <div className="grid grid-cols-2 xs:grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 text-xs text-slate-300">
                 {selectedIds.map(id => (
-                  <div key={id} className="bg-white/5 px-2.5 py-1 rounded-lg border border-white/5 whitespace-nowrap">
-                    <span className="font-semibold text-teal-400 mr-1.5">{getPlayerName(id)}:</span>
-                    <span className="font-mono font-bold text-slate-100">{playerStats[id] || 0} set</span>
+                  <div 
+                    key={id} 
+                    className="flex items-center justify-between bg-slate-950/40 hover:bg-slate-950/60 border border-white/5 hover:border-teal-500/10 px-3 py-1.5 rounded-xl transition-all duration-300 shadow-sm"
+                  >
+                    <span className="font-semibold text-slate-200 truncate pr-1" title={getPlayerName(id)}>
+                      {getPlayerName(id)}
+                    </span>
+                    <span className="font-mono font-bold px-2 py-0.5 rounded-lg bg-teal-500/10 text-teal-400 border border-teal-500/10 text-[10px] whitespace-nowrap flex-shrink-0">
+                      {playerStats[id] || 0} Set
+                    </span>
                   </div>
                 ))}
               </div>
