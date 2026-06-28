@@ -9,6 +9,7 @@ import MatchForm from './components/MatchForm';
 import MatchScheduler from './components/MatchScheduler';
 import MatchHistory from './components/MatchHistory';
 import PlayerManagement from './components/PlayerManagement';
+import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { Button } from './components/ui/button';
 import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2 } from 'lucide-react';
 import { useStore } from './store';
@@ -262,6 +263,9 @@ export default function App() {
           <span className="text-[10px] font-semibold">Cài Đặt</span>
         </button>
       </nav>
+
+      {/* PWA Install Prompt — Android & iOS */}
+      <PWAInstallPrompt />
     </div>
   );
 }
