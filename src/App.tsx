@@ -10,7 +10,7 @@ import MatchScheduler from './components/MatchScheduler';
 import MatchHistory from './components/MatchHistory';
 import PlayerManagement from './components/PlayerManagement';
 import { Button } from './components/ui/button';
-import { Trophy, PlusCircle, History, Users, CalendarRange } from 'lucide-react';
+import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2 } from 'lucide-react';
 import { useStore } from './store';
 
 type Tab = 'dashboard' | 'add' | 'schedule' | 'history' | 'players';
@@ -38,9 +38,9 @@ export default function App() {
 
     if (isLoading) {
       return (
-        <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] sm:text-[10px] font-bold text-amber-400">
-          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-          <span>Đang tải...</span>
+        <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-[9px] sm:text-[10px] font-bold text-teal-400">
+          <Loader2 className="w-3 h-3 sm:w-3.5 sm:h-3.5 animate-spin text-teal-400" />
+          <span className="animate-pulse">Đang đồng bộ...</span>
         </div>
       );
     }
@@ -73,6 +73,11 @@ export default function App() {
 
   return (
     <div className="min-h-screen text-slate-100 pb-24 md:pb-8 font-sans relative overflow-x-hidden transition-colors duration-300">
+      {/* Top Loading Bar */}
+      {isLoading && (
+        <div className="fixed top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-teal-400 via-indigo-500 to-teal-400 z-50 animate-pulse" />
+      )}
+
       {/* Background Mesh Gradients */}
       <div className="mesh-bg" />
 

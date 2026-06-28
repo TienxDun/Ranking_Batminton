@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { CheckCircle2, AlertCircle } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Minus, Plus } from 'lucide-react';
 
 export default function PlayerManagement() {
   const { players, config, addPlayer, updatePlayer, setConfig } = useStore();
@@ -58,13 +58,32 @@ export default function PlayerManagement() {
               <p className="text-xs text-slate-400">Yêu cầu tối thiểu để người chơi hiển thị trên bảng chính</p>
             </div>
             <div className="flex justify-center w-full sm:w-auto">
-              <Input 
-                type="number" 
-                className="w-24 text-center h-9 font-bold bg-slate-950 border-white/10"
-                min="1" 
-                value={config.minMatchesForMainBoard} 
-                onChange={e => setConfig({ minMatchesForMainBoard: parseInt(e.target.value) || 5 })} 
-              />
+              <div className="flex items-center justify-between bg-slate-950 border border-white/10 rounded-xl p-1 w-32 h-9">
+                <button
+                  type="button"
+                  onClick={() => setConfig({ minMatchesForMainBoard: Math.max(1, config.minMatchesForMainBoard - 1) })}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/5 active:bg-white/10 transition-colors text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                  disabled={config.minMatchesForMainBoard <= 1}
+                >
+                  <Minus className="w-3.5 h-3.5" />
+                </button>
+                
+                <input
+                  type="number"
+                  className="w-12 text-center font-bold bg-transparent border-0 text-white focus:outline-none focus:ring-0 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  min="1"
+                  value={config.minMatchesForMainBoard}
+                  onChange={e => setConfig({ minMatchesForMainBoard: Math.max(1, parseInt(e.target.value) || 1) })}
+                />
+                
+                <button
+                  type="button"
+                  onClick={() => setConfig({ minMatchesForMainBoard: config.minMatchesForMainBoard + 1 })}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/5 active:bg-white/10 transition-colors text-slate-400 hover:text-white cursor-pointer"
+                >
+                  <Plus className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
           </div>
         </CardContent>
