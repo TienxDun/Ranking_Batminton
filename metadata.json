@@ -1,0 +1,6 @@
+{
+  "name": "Badminton Tracker",
+  "description": "Theo dõi kết quả các trận cầu lông đôi, tính bảng xếp hạng cá nhân theo tỉ lệ thắng và hiệu số.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
