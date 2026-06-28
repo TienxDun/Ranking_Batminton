@@ -4,6 +4,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { Match, Player, LeaderboardConfig, ScheduledSet } from './types';
 import { initialPlayers, initialMatches } from './data/seed';
 
+const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
+
 interface AppState {
   players: Player[];
   matches: Match[];
@@ -15,8 +17,11 @@ interface AppState {
     schedule: ScheduledSet[];
     isGenerated: boolean;
   };
+  isLoading: boolean;
+  error: string | null;
   
   // Actions
+  fetchDataFromServer: () => Promise<void>;
   addPlayer: (name: string, gender?: 'male' | 'female') => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   addMatch: (match: Omit<Match, 'id'>) => void;
@@ -32,57 +37,148 @@ interface AppState {
 
 export const useStore = create<AppState>()(
   persist(
-    (set, get) => ({
-      players: initialPlayers,
-      matches: initialMatches,
-      config: { minMatchesForMainBoard: 5 },
-      theme: 'dark',
-      schedulerState: undefined,
-      
-      addPlayer: (name, gender = 'male') => set((state) => ({
-        players: [...state.players, { id: uuidv4(), name, isActive: true, gender }]
-      })),
-      
-      updatePlayer: (id, updates) => set((state) => ({
-        players: state.players.map(p => p.id === id ? { ...p, ...updates } : p)
-      })),
-      
-      addMatch: (match) => set((state) => ({
-        matches: [{ ...match, id: uuidv4() }, ...state.matches]
-      })),
-      
-      updateMatch: (id, updates) => set((state) => ({
-        matches: state.matches.map(m => m.id === id ? { ...m, ...updates } : m)
-      })),
-      
-      deleteMatch: (id) => set((state) => ({
-        matches: state.matches.filter(m => m.id !== id)
-      })),
-      
-      clearMatches: () => set({ matches: [] }),
-      
-      setConfig: (config) => set((state) => ({
-        config: { ...state.config, ...config }
-      })),
-      
-      importData: (jsonData) => {
+    (set, get) => {
+      // Hàm đồng bộ dữ liệu ngầm lên server (Google Sheets hoặc Express Server)
+      const sync = async (updatedFields: Partial<AppState>) => {
+        const players = updatedFields.players ?? get().players;
+        const matches = updatedFields.matches ?? get().matches;
+        const config = updatedFields.config ?? get().config;
+        const schedulerState = updatedFields.schedulerState !== undefined ? updatedFields.schedulerState : get().schedulerState;
+
         try {
-          const data = JSON.parse(jsonData);
-          if (data.players && data.matches && data.config) {
-            set({ players: data.players, matches: data.matches, config: data.config });
-            return true;
+          if (GOOGLE_SCRIPT_URL) {
+            // Gửi lên Google Apps Script (dùng text/plain để tránh preflight request OPTIONS gây lỗi CORS)
+            await fetch(GOOGLE_SCRIPT_URL, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'text/plain',
+              },
+              body: JSON.stringify({ players, matches, config, schedulerState }),
+            });
+          } else {
+            // Gửi lên Express Server cục bộ
+            const response = await fetch('/api/data', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ players, matches, config, schedulerState }),
+            });
+            if (!response.ok) {
+              console.error('Lỗi phản hồi từ API Express');
+            }
           }
-          return false;
         } catch (e) {
-          console.error("Import error", e);
-          return false;
+          console.error('Lỗi kết nối khi đồng bộ dữ liệu:', e);
         }
-      },
-      
-      resetData: () => set({ players: initialPlayers, matches: initialMatches, config: { minMatchesForMainBoard: 5 }, theme: 'dark', schedulerState: undefined }),
-      toggleTheme: () => {},
-      setSchedulerState: (schedulerState) => set({ schedulerState }),
-    }),
+      };
+
+      return {
+        players: initialPlayers,
+        matches: initialMatches,
+        config: { minMatchesForMainBoard: 5 },
+        theme: 'dark',
+        schedulerState: undefined,
+        isLoading: false,
+        error: null,
+        
+        fetchDataFromServer: async () => {
+          set({ isLoading: true, error: null });
+          try {
+            const url = GOOGLE_SCRIPT_URL || '/api/data';
+            const response = await fetch(url);
+            if (response.ok) {
+              const data = await response.json();
+              set({
+                players: data.players || [],
+                matches: data.matches || [],
+                config: data.config || { minMatchesForMainBoard: 5 },
+                schedulerState: data.schedulerState,
+                isLoading: false
+              });
+            } else {
+              set({ error: 'Không thể tải dữ liệu từ server', isLoading: false });
+            }
+          } catch (err) {
+            set({ error: 'Không thể kết nối đến server', isLoading: false });
+          }
+        },
+
+        addPlayer: (name, gender = 'male') => {
+          const newPlayers = [...get().players, { id: uuidv4(), name, isActive: true, gender }];
+          set({ players: newPlayers });
+          sync({ players: newPlayers });
+        },
+        
+        updatePlayer: (id, updates) => {
+          const newPlayers = get().players.map(p => p.id === id ? { ...p, ...updates } : p);
+          set({ players: newPlayers });
+          sync({ players: newPlayers });
+        },
+        
+        addMatch: (match) => {
+          const newMatches = [{ ...match, id: uuidv4() }, ...get().matches];
+          set({ matches: newMatches });
+          sync({ matches: newMatches });
+        },
+        
+        updateMatch: (id, updates) => {
+          const newMatches = get().matches.map(m => m.id === id ? { ...m, ...updates } : m);
+          set({ matches: newMatches });
+          sync({ matches: newMatches });
+        },
+        
+        deleteMatch: (id) => {
+          const newMatches = get().matches.filter(m => m.id !== id);
+          set({ matches: newMatches });
+          sync({ matches: newMatches });
+        },
+        
+        clearMatches: () => {
+          set({ matches: [] });
+          sync({ matches: [] });
+        },
+        
+        setConfig: (config) => {
+          const newConfig = { ...get().config, ...config };
+          set({ config: newConfig });
+          sync({ config: newConfig });
+        },
+        
+        importData: (jsonData) => {
+          try {
+            const data = JSON.parse(jsonData);
+            if (data.players && data.matches && data.config) {
+              set({ players: data.players, matches: data.matches, config: data.config });
+              sync({ players: data.players, matches: data.matches, config: data.config });
+              return true;
+            }
+            return false;
+          } catch (e) {
+            console.error("Import error", e);
+            return false;
+          }
+        },
+        
+        resetData: () => {
+          const resetFields = {
+            players: initialPlayers,
+            matches: initialMatches,
+            config: { minMatchesForMainBoard: 5 },
+            schedulerState: undefined
+          };
+          set(resetFields);
+          sync(resetFields);
+        },
+        
+        toggleTheme: () => {},
+        
+        setSchedulerState: (schedulerState) => {
+          set({ schedulerState });
+          sync({ schedulerState });
+        },
+      };
+    },
     {
       name: 'badminton-stats-storage',
       migrate: (persistedState: any, version: number) => {

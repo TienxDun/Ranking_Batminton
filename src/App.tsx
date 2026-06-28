@@ -18,15 +18,57 @@ type Tab = 'dashboard' | 'add' | 'schedule' | 'history' | 'players';
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
   const [prefilledMatch, setPrefilledMatch] = useState<{ t1p1: string; t1p2: string; t2p1: string; t2p2: string } | undefined>(undefined);
+  const { fetchDataFromServer, isLoading, error } = useStore();
 
   useEffect(() => {
     // Luôn khóa cứng ứng dụng ở giao diện Tối (Dark mode)
     document.documentElement.classList.remove('light');
-  }, []);
+    
+    // Fetch dữ liệu mới nhất từ server Express khi ứng dụng khởi chạy
+    fetchDataFromServer();
+  }, [fetchDataFromServer]);
 
   const handleFillMatch = (matchData: { t1p1: string; t1p2: string; t2p1: string; t2p2: string }) => {
     setPrefilledMatch(matchData);
     setActiveTab('add');
+  };
+
+  const renderDbStatus = () => {
+    const isGoogleSheets = !!import.meta.env.VITE_GOOGLE_SCRIPT_URL;
+
+    if (isLoading) {
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-amber-500/10 border border-amber-500/20 text-[9px] sm:text-[10px] font-bold text-amber-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
+          <span>Đang tải...</span>
+        </div>
+      );
+    }
+
+    if (error) {
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-rose-500/10 border border-rose-500/20 text-[9px] sm:text-[10px] font-bold text-rose-400">
+          <span className="h-1.5 w-1.5 rounded-full bg-rose-400 animate-pulse" />
+          <span>Mất kết nối</span>
+        </div>
+      );
+    }
+
+    if (isGoogleSheets) {
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[9px] sm:text-[10px] font-bold text-emerald-400" title="Kết nối thành công với Google Sheets Database">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+          <span>Đã đồng bộ Sheets</span>
+        </div>
+      );
+    }
+
+    return (
+      <div className="flex items-center gap-1.5 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-full bg-teal-500/10 border border-teal-500/20 text-[9px] sm:text-[10px] font-bold text-teal-400" title="Chạy ở chế độ lưu trữ cục bộ">
+        <span className="h-1.5 w-1.5 rounded-full bg-teal-400" />
+        <span>Dữ liệu Local</span>
+      </div>
+    );
   };
 
   return (
@@ -70,7 +112,8 @@ export default function App() {
               <span className="text-[8px] uppercase tracking-widest text-teal-400/80 font-bold mt-1 block">Hệ Thống Giải Đấu</span>
             </div>
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2.5">
+            {renderDbStatus()}
             <div className="hidden md:flex items-center bg-slate-950/30 border border-white/5 p-1 rounded-xl">
               <button 
                 onClick={() => setActiveTab('dashboard')} 

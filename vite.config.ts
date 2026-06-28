@@ -5,6 +5,7 @@ import {defineConfig} from 'vite';
 
 export default defineConfig(() => {
   return {
+    base: process.env.VITE_BASE_PATH || '/',
     plugins: [react(), tailwindcss()],
     resolve: {
       alias: {
@@ -12,10 +13,15 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modifyâfile watching is disabled to prevent flickering during agent edits.
+      proxy: {
+        '/api': {
+          target: 'http://localhost:3001',
+          changeOrigin: true,
+        },
+      },
+      // HMR có thể được tắt qua biến môi trường DISABLE_HMR khi agent chỉnh sửa file để tránh flickering.
       hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
+      // Tắt tính năng xem thay đổi file (file watching) khi DISABLE_HMR để tiết kiệm CPU.
       watch: process.env.DISABLE_HMR === 'true' ? null : {},
     },
   };

@@ -1,0 +1,127 @@
+{
+  "players": [
+    {
+      "id": "p1_dung",
+      "name": "Dũng",
+      "isActive": true,
+      "gender": "male"
+    },
+    {
+      "id": "p2_nam",
+      "name": "Nam",
+      "isActive": true,
+      "gender": "male"
+    },
+    {
+      "id": "p3_thu",
+      "name": "Thư",
+      "isActive": true,
+      "gender": "female"
+    },
+    {
+      "id": "p4_khoa",
+      "name": "Khoa",
+      "isActive": true,
+      "gender": "male"
+    },
+    {
+      "id": "p5_tuyet",
+      "name": "Tuyết",
+      "isActive": true,
+      "gender": "female"
+    },
+    {
+      "id": "p6_thuyen",
+      "name": "Thuyên",
+      "isActive": true,
+      "gender": "male"
+    },
+    {
+      "id": "p7_linh",
+      "name": "Linh",
+      "isActive": true,
+      "gender": "female"
+    },
+    {
+      "id": "p8_nhu",
+      "name": "Như",
+      "isActive": true,
+      "gender": "female"
+    }
+  ],
+  "matches": [
+    {
+      "date": "2026-06-28",
+      "team1": [
+        "p1_dung",
+        "p7_linh"
+      ],
+      "team2": [
+        "p4_khoa",
+        "p8_nhu"
+      ],
+      "isScoreExact": true,
+      "score1": 22,
+      "score2": 21,
+      "id": "d1783003-eea0-48a0-89a3-c65ff59d645d"
+    },
+    {
+      "date": "2026-06-28",
+      "team1": [
+        "p2_nam",
+        "p5_tuyet"
+      ],
+      "team2": [
+        "p3_thu",
+        "p6_thuyen"
+      ],
+      "isScoreExact": true,
+      "score1": 21,
+      "score2": 11,
+      "id": "98736e71-ee82-4428-a255-a7290a396870"
+    }
+  ],
+  "config": {
+    "minMatchesForMainBoard": 1
+  },
+  "schedulerState": {
+    "selectedIds": [
+      "p1_dung",
+      "p2_nam",
+      "p3_thu",
+      "p4_khoa",
+      "p5_tuyet",
+      "p6_thuyen",
+      "p7_linh",
+      "p8_nhu"
+    ],
+    "numSets": 2,
+    "schedule": [
+      {
+        "id": "1-1782625353453-j5dx",
+        "setIndex": 1,
+        "team1": [
+          "p2_nam",
+          "p5_tuyet"
+        ],
+        "team2": [
+          "p3_thu",
+          "p6_thuyen"
+        ]
+      },
+      {
+        "id": "2-1782625353453-5rod",
+        "setIndex": 2,
+        "team1": [
+          "p1_dung",
+          "p7_linh"
+        ],
+        "team2": [
+          "p4_khoa",
+          "p8_nhu"
+        ]
+      }
+    ],
+    "isGenerated": true
+  }
+}

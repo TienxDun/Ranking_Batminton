@@ -1,0 +1,57 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+      - master
+
+# Thiết lập quyền hạn cho GitHub Actions để triển khai lên Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Tránh việc chạy nhiều workflow song song khi push liên tục
+concurrency:
+  group: 'pages'
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout mã nguồn
+        uses: actions/checkout@v4
+
+      - name: Thiết lập Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Cài đặt thư viện phụ thuộc
+        run: npm ci
+
+      - name: Biên dịch sản phẩm (Build)
+        run: npm run build
+        env:
+          # Truyền API Google Sheets từ GitHub Secret khi build để đóng gói vào JS client
+          VITE_GOOGLE_SCRIPT_URL: ${{ secrets.VITE_GOOGLE_SCRIPT_URL }}
+          # Base path tương ứng với tên repository trên GitHub Pages
+          VITE_BASE_PATH: /Ranking_Batminton/
+
+      - name: Cấu hình môi trường GitHub Pages
+        uses: actions/configure-pages@v4
+
+      - name: Tải lên sản phẩm tĩnh
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: './dist'
+
+      - name: Triển khai lên GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
