@@ -24,10 +24,17 @@ export default function App() {
   useEffect(() => {
     // Luôn khóa cứng ứng dụng ở giao diện Tối (Dark mode)
     document.documentElement.classList.remove('light');
-    
+
     // Fetch dữ liệu mới nhất từ server Express khi ứng dụng khởi chạy
     fetchDataFromServer();
   }, [fetchDataFromServer]);
+
+  // Refetch khi chuyển sang tab Xếp Lịch để luôn hiển thị lịch mới nhất từ DB
+  useEffect(() => {
+    if (activeTab === 'schedule') {
+      fetchDataFromServer();
+    }
+  }, [activeTab, fetchDataFromServer]);
 
   const handleFillMatch = (matchData: { t1p1: string; t1p2: string; t2p1: string; t2p2: string }) => {
     setPrefilledMatch(matchData);

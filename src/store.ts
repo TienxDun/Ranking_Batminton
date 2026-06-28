@@ -11,6 +11,15 @@ interface AppState {
   matches: Match[];
   config: LeaderboardConfig;
   theme: 'dark';
+  // schedule: lịch thi đấu đã tạo — được sync lên DB, chia sẻ giữa mọi người dùng
+  schedule: ScheduledSet[];
+  // schedulerUIState: trạng thái UI cục bộ — chỉ lưu localStorage, không sync
+  schedulerUIState?: {
+    selectedIds: string[];
+    numSets: number;
+    isGenerated: boolean;
+  };
+  /** @deprecated use schedule + schedulerUIState instead */
   schedulerState?: {
     selectedIds: string[];
     numSets: number;
@@ -19,7 +28,7 @@ interface AppState {
   };
   isLoading: boolean;
   error: string | null;
-  
+
   // Actions
   fetchDataFromServer: () => Promise<void>;
   addPlayer: (name: string, gender?: 'male' | 'female') => void;
@@ -32,6 +41,11 @@ interface AppState {
   importData: (jsonData: string) => boolean;
   resetData: () => void;
   toggleTheme: () => void;
+  /** Lưu lịch thi đấu lên DB và chia sẻ với mọi người dùng */
+  saveScheduleToDB: (newSchedule: ScheduledSet[]) => void;
+  /** Cập nhật UI state cục bộ (selectedIds, numSets, isGenerated) — không sync DB */
+  setSchedulerUIState: (state: AppState['schedulerUIState']) => void;
+  /** @deprecated dùng saveScheduleToDB + setSchedulerUIState thay thế */
   setSchedulerState: (state: AppState['schedulerState']) => void;
 }
 
@@ -43,9 +57,10 @@ export const useStore = create<AppState>()(
         const players = updatedFields.players ?? get().players;
         const matches = updatedFields.matches ?? get().matches;
         const config = updatedFields.config ?? get().config;
-        const schedulerState = updatedFields.schedulerState !== undefined ? updatedFields.schedulerState : get().schedulerState;
+        // Chỉ sync `schedule` (lịch thi đấu đã tạo) lên DB — schedulerUIState là local only
+        const schedule = updatedFields.schedule !== undefined ? updatedFields.schedule : get().schedule;
 
-        // Nếu chạy trên GitHub Pages tĩnh và không có link Google Sheets, chỉ lưu local (Zustand Persist tự lo)
+        // Nếu chạy trên GitHub Pages tĩnh và không có link Google Sheets, chỉ lưu local
         const isGitHubPages = window.location.hostname.endsWith('github.io');
         if (!GOOGLE_SCRIPT_URL && isGitHubPages) {
           return;
@@ -53,22 +68,16 @@ export const useStore = create<AppState>()(
 
         try {
           if (GOOGLE_SCRIPT_URL) {
-            // Gửi lên Google Apps Script (dùng text/plain để tránh preflight request OPTIONS gây lỗi CORS)
             await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'text/plain',
-              },
-              body: JSON.stringify({ players, matches, config, schedulerState }),
+              headers: { 'Content-Type': 'text/plain' },
+              body: JSON.stringify({ players, matches, config, schedule }),
             });
           } else {
-            // Gửi lên Express Server cục bộ
             const response = await fetch('/api/data', {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({ players, matches, config, schedulerState }),
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ players, matches, config, schedule }),
             });
             if (!response.ok) {
               console.error('Lỗi phản hồi từ API Express');
@@ -84,12 +93,13 @@ export const useStore = create<AppState>()(
         matches: initialMatches,
         config: { minMatchesForMainBoard: 5 },
         theme: 'dark',
-        schedulerState: undefined,
+        schedule: [],
+        schedulerUIState: undefined,
+        schedulerState: undefined, // legacy compat
         isLoading: false,
         error: null,
         
         fetchDataFromServer: async () => {
-          // Nếu chạy trên GitHub Pages tĩnh và không cấu hình Google Sheets URL, bỏ qua fetch để tránh lỗi 404 console
           const isGitHubPages = window.location.hostname.endsWith('github.io');
           if (!GOOGLE_SCRIPT_URL && isGitHubPages) {
             set({ isLoading: false, error: null });
@@ -106,11 +116,11 @@ export const useStore = create<AppState>()(
                 players: data.players || [],
                 matches: data.matches || [],
                 config: data.config || { minMatchesForMainBoard: 5 },
-                schedulerState: data.schedulerState,
+                // Ưu tiên `schedule` mới, fallback về schedulerState.schedule cũ nếu DB cũ
+                schedule: data.schedule || data.schedulerState?.schedule || [],
                 isLoading: false
               });
             } else {
-              // Chỉ báo lỗi nếu không phải trường hợp chạy tĩnh thiếu database
               set({ error: isGitHubPages ? null : 'Không thể tải dữ liệu từ server', isLoading: false });
             }
           } catch (err) {
@@ -179,17 +189,29 @@ export const useStore = create<AppState>()(
             players: initialPlayers,
             matches: initialMatches,
             config: { minMatchesForMainBoard: 5 },
+            schedule: [] as ScheduledSet[],
             schedulerState: undefined
           };
           set(resetFields);
           sync(resetFields);
         },
-        
+
         toggleTheme: () => {},
-        
+
+        saveScheduleToDB: (newSchedule: ScheduledSet[]) => {
+          set({ schedule: newSchedule });
+          sync({ schedule: newSchedule });
+        },
+
+        setSchedulerUIState: (schedulerUIState) => {
+          set({ schedulerUIState });
+          // Không sync lên DB — chỉ lưu localStorage qua zustand persist
+        },
+
+        // Legacy: giữ lại để không break code cũ
         setSchedulerState: (schedulerState) => {
           set({ schedulerState });
-          sync({ schedulerState });
+          // Không sync lên DB nữa — dùng saveScheduleToDB thay thế
         },
       };
     },

@@ -11,7 +11,7 @@ interface MatchSchedulerProps {
 }
 
 export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
-  const { players, schedulerState, setSchedulerState } = useStore();
+  const { players, schedule: dbSchedule, schedulerUIState, schedulerState, saveScheduleToDB, setSchedulerUIState, fetchDataFromServer } = useStore();
   const activePlayers = players.filter(p => p.isActive);
 
   // Helper to calculate perfect sets
@@ -27,21 +27,23 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
     };
   };
 
-  // 1. Selected IDs (persisted in Zustand store)
+  // 1. Selected IDs (UI local state)
   const [selectedIds, setSelectedIds] = useState<string[]>(() => {
-    if (schedulerState?.selectedIds) {
-      // Filter out players who might have been deleted or set inactive
-      return schedulerState.selectedIds.filter(id => activePlayers.some(p => p.id === id));
+    const savedIds = schedulerUIState?.selectedIds || schedulerState?.selectedIds;
+    if (savedIds) {
+      return savedIds.filter(id => activePlayers.some(p => p.id === id));
     }
     return activePlayers.map(p => p.id);
   });
 
-  // 2. Multiplier for sets (how many times the minimum perfect sets)
+  // 2. Multiplier for sets
   const [multiplier, setMultiplier] = useState<number>(() => {
-    if (schedulerState?.selectedIds && schedulerState?.numSets) {
-      const perfect = getPerfectSets(schedulerState.selectedIds.length);
+    const savedNumSets = schedulerUIState?.numSets || schedulerState?.numSets;
+    const savedIds = schedulerUIState?.selectedIds || schedulerState?.selectedIds;
+    if (savedIds && savedNumSets) {
+      const perfect = getPerfectSets(savedIds.length);
       if (perfect.sets > 0) {
-        return Math.max(1, Math.round(schedulerState.numSets / perfect.sets));
+        return Math.max(1, Math.round(savedNumSets / perfect.sets));
       }
     }
     return 1;
@@ -49,23 +51,43 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
 
   // 3. Number of Sets
   const [numSets, setNumSets] = useState<number>(() => {
-    if (schedulerState?.numSets) return schedulerState.numSets;
+    const saved = schedulerUIState?.numSets || schedulerState?.numSets;
+    if (saved) return saved;
     const perfect = getPerfectSets(selectedIds.length);
     return perfect.sets > 0 ? perfect.sets : 6;
   });
 
-  // 4. Schedule (persisted in Zustand store)
+  // 4. Schedule — đọc từ DB (dbSchedule), local state để chỉnh sửa
   const [schedule, setSchedule] = useState<ScheduledSet[]>(() => {
-    return schedulerState?.schedule || [];
+    return dbSchedule.length > 0 ? dbSchedule : (schedulerState?.schedule || []);
   });
 
-  // 5. Is Generated (persisted in Zustand store)
+  // 5. Is Generated
   const [isGenerated, setIsGenerated] = useState<boolean>(() => {
-    return schedulerState?.isGenerated || false;
+    return schedulerUIState?.isGenerated || schedulerState?.isGenerated || dbSchedule.length > 0;
   });
+
+  // Khi DB load xong và có dữ liệu schedule mới hơn, cập nhật local state
+  useEffect(() => {
+    if (dbSchedule.length > 0) {
+      setSchedule(dbSchedule);
+      setIsGenerated(true);
+    }
+  }, [dbSchedule]);
+
 
   const [swapNotification, setSwapNotification] = useState<string | null>(null);
   const [showConfirm, setShowConfirm] = useState<boolean>(false);
+  // Flag: true khi người dùng đổi cầu thủ → cần sync schedule mới nhất lên DB
+  const [needsSyncToDB, setNeedsSyncToDB] = useState<boolean>(false);
+
+  // Khi schedule thay đổi do user và có flag cần sync → gọi saveScheduleToDB
+  useEffect(() => {
+    if (needsSyncToDB && schedule.length > 0) {
+      saveScheduleToDB(schedule);
+      setNeedsSyncToDB(false);
+    }
+  }, [schedule, needsSyncToDB, saveScheduleToDB]);
 
   // Auto calculate and update sets whenever player selection or multiplier changes
   useEffect(() => {
@@ -77,15 +99,11 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
     }
   }, [selectedIds.length, multiplier]);
 
-  // Synchronize to Zustand store to preserve state across tab switches / reload
+  // Lưu UI state cục bộ (chỉ selectedIds/numSets/isGenerated, không sync DB)
   useEffect(() => {
-    setSchedulerState({
-      selectedIds,
-      numSets,
-      schedule,
-      isGenerated
-    });
-  }, [selectedIds, numSets, schedule, isGenerated, setSchedulerState]);
+    setSchedulerUIState({ selectedIds, numSets, isGenerated });
+  }, [selectedIds, numSets, isGenerated, setSchedulerUIState]);
+
 
   const handleTogglePlayer = (id: string) => {
     setSelectedIds(prev => 
@@ -213,6 +231,8 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
 
     setSchedule(generated);
     setIsGenerated(true);
+    // Đồng bộ lịch mới lên DB ngay lập tức
+    saveScheduleToDB(generated);
   };
 
   const getPlayerName = (id: string) => {
@@ -308,6 +328,7 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
         setSwapNotification(prev => prev === swapMsg ? null : prev);
       }, 5000);
     }
+    setNeedsSyncToDB(true);
   };
 
   // Tính số set đấu trung bình của mỗi người chơi đã chọn
