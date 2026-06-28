@@ -45,6 +45,12 @@ export const useStore = create<AppState>()(
         const config = updatedFields.config ?? get().config;
         const schedulerState = updatedFields.schedulerState !== undefined ? updatedFields.schedulerState : get().schedulerState;
 
+        // Nếu chạy trên GitHub Pages tĩnh và không có link Google Sheets, chỉ lưu local (Zustand Persist tự lo)
+        const isGitHubPages = window.location.hostname.endsWith('github.io');
+        if (!GOOGLE_SCRIPT_URL && isGitHubPages) {
+          return;
+        }
+
         try {
           if (GOOGLE_SCRIPT_URL) {
             // Gửi lên Google Apps Script (dùng text/plain để tránh preflight request OPTIONS gây lỗi CORS)
@@ -83,6 +89,13 @@ export const useStore = create<AppState>()(
         error: null,
         
         fetchDataFromServer: async () => {
+          // Nếu chạy trên GitHub Pages tĩnh và không cấu hình Google Sheets URL, bỏ qua fetch để tránh lỗi 404 console
+          const isGitHubPages = window.location.hostname.endsWith('github.io');
+          if (!GOOGLE_SCRIPT_URL && isGitHubPages) {
+            set({ isLoading: false, error: null });
+            return;
+          }
+
           set({ isLoading: true, error: null });
           try {
             const url = GOOGLE_SCRIPT_URL || '/api/data';
@@ -97,10 +110,11 @@ export const useStore = create<AppState>()(
                 isLoading: false
               });
             } else {
-              set({ error: 'Không thể tải dữ liệu từ server', isLoading: false });
+              // Chỉ báo lỗi nếu không phải trường hợp chạy tĩnh thiếu database
+              set({ error: isGitHubPages ? null : 'Không thể tải dữ liệu từ server', isLoading: false });
             }
           } catch (err) {
-            set({ error: 'Không thể kết nối đến server', isLoading: false });
+            set({ error: isGitHubPages ? null : 'Không thể kết nối đến server', isLoading: false });
           }
         },
 
