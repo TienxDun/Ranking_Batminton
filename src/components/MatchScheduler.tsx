@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
@@ -666,10 +667,14 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
         </div>
       )}
 
-      {/* Custom Confirmation Dialog */}
-      {showConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-xs animate-fade-in">
-          <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-sm w-full p-5 space-y-5 shadow-2xl shadow-teal-950/20 text-center scale-100">
+      {/* Custom Confirmation Dialog — rendered via Portal to escape all stacking contexts */}
+      {showConfirm && createPortal(
+        <div
+          className="flex items-center justify-center p-4 bg-slate-950/80"
+          style={{ position: 'fixed', inset: 0, zIndex: 9999 }}
+          onClick={(e) => { if (e.target === e.currentTarget) setShowConfirm(false); }}
+        >
+          <div className="bg-slate-900 border border-white/10 rounded-2xl max-w-sm w-full p-5 space-y-5 shadow-2xl shadow-teal-950/20 text-center">
             <div className="flex flex-col items-center space-y-2">
               <div className="h-11 w-11 rounded-full bg-teal-500/10 flex items-center justify-center text-teal-400 border border-teal-500/20 mb-1">
                 <CalendarRange className="w-5 h-5 animate-pulse" />
@@ -679,7 +684,7 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                 Hệ thống sẽ tự động phân chia ngẫu nhiên <span className="text-teal-400 font-bold">{selectedIds.length} người chơi</span> thành <span className="text-teal-400 font-bold">{numSets} set</span> đấu tối ưu và công bằng nhất.
               </p>
             </div>
-            
+
             <div className="flex gap-2.5 justify-center pt-1">
               <Button
                 variant="outline"
@@ -701,7 +706,8 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
