@@ -5,6 +5,10 @@ on:
     branches:
       - main
       - master
+  pull_request:
+    branches:
+      - main
+      - master
 
 # Thiết lập quyền hạn cho GitHub Actions để triển khai lên Pages
 permissions:
@@ -18,10 +22,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  lint-and-build:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout mã nguồn
@@ -36,6 +37,9 @@ jobs:
       - name: Cài đặt thư viện phụ thuộc
         run: npm ci
 
+      - name: Kiểm tra lỗi TypeScript / Lint
+        run: npm run lint
+
       - name: Biên dịch sản phẩm (Build)
         run: npm run build
         env:
@@ -44,14 +48,26 @@ jobs:
           # Base path tương ứng với tên repository trên GitHub Pages
           VITE_BASE_PATH: /Ranking_Batminton/
 
-      - name: Cấu hình môi trường GitHub Pages
-        uses: actions/configure-pages@v4
-
+      # Chỉ tải lên sản phẩm tĩnh nếu build trên nhánh chính để chuẩn bị triển khai
       - name: Tải lên sản phẩm tĩnh
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
         uses: actions/upload-pages-artifact@v3
         with:
           path: './dist'
 
+  deploy:
+    needs: lint-and-build
+    # Chỉ triển khai khi đẩy trực tiếp (hoặc merge) lên các nhánh chính
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Cấu hình môi trường GitHub Pages
+        uses: actions/configure-pages@v4
+
       - name: Triển khai lên GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
