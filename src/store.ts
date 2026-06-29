@@ -10,7 +10,7 @@ interface AppState {
   players: Player[];
   matches: Match[];
   config: LeaderboardConfig;
-  theme: 'dark';
+  theme: 'dark' | 'light';
   // schedule: lịch thi đấu đã tạo — được sync lên DB, chia sẻ giữa mọi người dùng
   schedule: ScheduledSet[];
   // schedulerUIState: trạng thái UI cục bộ — chỉ lưu localStorage, không sync
@@ -196,7 +196,10 @@ export const useStore = create<AppState>()(
           sync(resetFields);
         },
 
-        toggleTheme: () => {},
+        toggleTheme: () => {
+          const nextTheme = get().theme === 'dark' ? 'light' : 'dark';
+          set({ theme: nextTheme });
+        },
 
         saveScheduleToDB: (newSchedule: ScheduledSet[]) => {
           set({ schedule: newSchedule });

@@ -21,7 +21,7 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
   const { players, addMatch } = useStore();
   const activePlayers = players.filter(p => p.isActive);
 
-  const [date, setDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [t1p1, setT1p1] = useState(initialData?.t1p1 || '');
   const [t1p2, setT1p2] = useState(initialData?.t1p2 || '');
   const [t2p1, setT2p1] = useState(initialData?.t2p1 || '');
@@ -89,8 +89,8 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
         
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
-            <label className="block text-sm font-medium mb-1">Ngày đấu</label>
-            <Input type="date" value={date} onChange={e => setDate(e.target.value)} required />
+            <label className="block text-sm font-medium mb-1">Thời gian đấu</label>
+            <Input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} required />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

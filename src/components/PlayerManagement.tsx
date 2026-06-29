@@ -110,7 +110,7 @@ export default function PlayerManagement() {
                 <option value="male">Nam ♂</option>
                 <option value="female">Nữ ♀</option>
               </select>
-              <Button type="submit" className="h-10 px-6 font-bold flex-1 sm:flex-initial bg-teal-500 hover:bg-teal-600 text-slate-950 cursor-pointer">Thêm</Button>
+              <Button type="submit" className="h-10 px-6 font-bold flex-1 sm:flex-initial bg-teal-500 hover:bg-teal-600 text-white-force cursor-pointer">Thêm</Button>
             </div>
           </form>
 

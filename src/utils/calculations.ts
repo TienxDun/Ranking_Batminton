@@ -90,8 +90,7 @@ export function calculateLeaderboard(players: Player[], matches: Match[]): Playe
       const s1 = m.score1;
       const s2 = m.score2;
       const totalPoints = s1 + s2;
-      const isTeam1Win = s1 > s2;
-      const winPart = isTeam1Win ? 1.0 : 0.0;
+      const winPart = s1 > s2 ? 1.0 : s1 < s2 ? 0.0 : 0.5;
 
       if (totalPoints > 0) {
         // Blends win outcome (60% weight) and ratio of points won (40% weight)

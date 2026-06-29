@@ -7,7 +7,7 @@ export type Player = {
 
 export type Match = {
   id: string;
-  date: string; // ISO string YYYY-MM-DD
+  date: string; // ISO string format YYYY-MM-DD or YYYY-MM-DDTHH:mm
   team1: [string, string]; // Player IDs
   team2: [string, string]; // Player IDs
   isScoreExact: boolean;

@@ -481,7 +481,7 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
           {/* Nút Tạo Lịch */}
           <Button
             type="button"
-            className="w-full h-11 bg-gradient-to-r from-teal-500 to-emerald-500 text-white font-bold tracking-wide shadow-md shadow-teal-500/10 hover:opacity-95"
+            className="w-full h-11 bg-gradient-to-r from-teal-500 to-emerald-500 text-white-force font-bold tracking-wide shadow-md shadow-teal-500/10 hover:opacity-95"
             disabled={selectedIds.length < 4}
             onClick={() => setShowConfirm(true)}
           >
@@ -507,15 +507,15 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
       {/* Kết quả xếp lịch */}
       {isGenerated && schedule.length > 0 && (
         <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-center sm:text-left">
+            <h3 className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center justify-center sm:justify-start gap-2 whitespace-nowrap">
               <Trophy className="w-4 h-4 text-amber-500" />
               Lịch thi đấu đã tạo ({schedule.length} set)
             </h3>
             <Button 
               variant="outline" 
               size="sm" 
-              className="text-xs h-8 whitespace-nowrap cursor-pointer" 
+              className="text-xs h-8 whitespace-nowrap cursor-pointer w-full sm:w-auto flex items-center justify-center" 
               onClick={() => setShowConfirm(true)}
             >
               <RefreshCw className="w-3 h-3 mr-1" />
@@ -672,7 +672,7 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                 {selectedIds.map(id => (
                   <div 
                     key={id} 
-                    className="flex items-center justify-between bg-slate-950/40 hover:bg-slate-950/60 border border-white/5 hover:border-teal-500/10 px-3 py-1.5 rounded-xl transition-all duration-300 shadow-sm"
+                    className="flex items-center justify-between bg-slate-950/40 border border-white/5 px-3 py-1.5 rounded-xl transition-all duration-300 shadow-sm"
                   >
                     <span className="font-semibold text-slate-200 truncate pr-1" title={getPlayerName(id)}>
                       {getPlayerName(id)}
@@ -721,7 +721,7 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                   generateSchedule();
                   setShowConfirm(false);
                 }}
-                className="h-9 px-4 text-xs font-bold bg-teal-500 hover:bg-teal-600 text-slate-950 cursor-pointer rounded-xl flex-1"
+                className="h-9 px-4 text-xs font-bold bg-teal-500 hover:bg-teal-600 text-white-force cursor-pointer rounded-xl flex-1"
               >
                 Đồng ý & Tạo
               </Button>

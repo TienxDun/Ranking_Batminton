@@ -168,14 +168,14 @@ export default function PWAInstallPrompt() {
           {platform === 'android' ? (
             <button
               onClick={handleAndroidInstall}
-              className="px-3 py-1.5 bg-teal-500 hover:bg-teal-400 text-slate-950 text-[11px] font-bold rounded-lg transition-colors whitespace-nowrap"
+              className="px-3 py-1.5 bg-teal-500 hover:bg-teal-400 text-white-force text-[11px] font-bold rounded-lg transition-colors whitespace-nowrap"
             >
               Cài đặt
             </button>
           ) : (
             <button
               onClick={() => setShowIOSGuide(true)}
-              className="px-3 py-1.5 bg-teal-500 hover:bg-teal-400 text-slate-950 text-[11px] font-bold rounded-lg transition-colors whitespace-nowrap"
+              className="px-3 py-1.5 bg-teal-500 hover:bg-teal-400 text-white-force text-[11px] font-bold rounded-lg transition-colors whitespace-nowrap"
             >
               Hướng dẫn
             </button>

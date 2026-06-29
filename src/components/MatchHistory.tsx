@@ -1,16 +1,32 @@
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Trash2, AlertTriangle, X, Calendar } from 'lucide-react';
+import { Trash2, AlertTriangle, X, Calendar, Pencil } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
+import { Select } from './ui/select';
+import { Input } from './ui/input';
+import { Match } from '../types';
 
 export default function MatchHistory() {
-  const { matches, players, deleteMatch, clearMatches } = useStore();
+  const { matches, players, deleteMatch, clearMatches, updateMatch } = useStore();
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [isConfirmingClearAll, setIsConfirmingClearAll] = useState(false);
+  
+  // States cho tính năng chỉnh sửa
+  const [editingMatch, setEditingMatch] = useState<Match | null>(null);
+  const [editDate, setEditDate] = useState('');
+  const [editT1p1, setEditT1p1] = useState('');
+  const [editT1p2, setEditT1p2] = useState('');
+  const [editT2p1, setEditT2p1] = useState('');
+  const [editT2p2, setEditT2p2] = useState('');
+  const [editScore1, setEditScore1] = useState<number | ''>('');
+  const [editScore2, setEditScore2] = useState<number | ''>('');
+  const [editErrorMsg, setEditErrorMsg] = useState<string | null>(null);
+  
   const itemsPerPage = 10;
 
   const getPlayerName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
@@ -33,6 +49,55 @@ export default function MatchHistory() {
         setPage(newTotalPages);
       }
     }
+  };
+
+  const handleEditClick = (match: Match) => {
+    setEditingMatch(match);
+    let formattedDate = match.date;
+    if (!formattedDate.includes('T')) {
+      formattedDate = `${formattedDate}T00:00`;
+    }
+    setEditDate(formattedDate);
+    setEditT1p1(match.team1[0]);
+    setEditT1p2(match.team1[1]);
+    setEditT2p1(match.team2[0]);
+    setEditT2p2(match.team2[1]);
+    setEditScore1(match.score1);
+    setEditScore2(match.score2);
+    setEditErrorMsg(null);
+  };
+
+  const confirmEdit = (e: React.FormEvent) => {
+    e.preventDefault();
+    setEditErrorMsg(null);
+
+    if (!editingMatch) return;
+
+    if (!editT1p1 || !editT1p2 || !editT2p1 || !editT2p2) {
+      setEditErrorMsg("Vui lòng chọn đủ 4 người chơi!");
+      return;
+    }
+
+    const uniquePlayers = new Set([editT1p1, editT1p2, editT2p1, editT2p2]);
+    if (uniquePlayers.size !== 4) {
+      setEditErrorMsg("Một người không thể chơi ở nhiều vị trí trong cùng một trận!");
+      return;
+    }
+
+    if (editScore1 === '' || editScore2 === '') {
+      setEditErrorMsg("Vui lòng nhập điểm chi tiết cho cả hai đội!");
+      return;
+    }
+
+    updateMatch(editingMatch.id, {
+      date: editDate,
+      team1: [editT1p1, editT1p2],
+      team2: [editT2p1, editT2p2],
+      score1: Number(editScore1),
+      score2: Number(editScore2),
+    });
+
+    setEditingMatch(null);
   };
 
   return (
@@ -58,17 +123,26 @@ export default function MatchHistory() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="sticky-header-date min-w-[100px] w-[100px] whitespace-nowrap">Ngày</TableHead>
+                  <TableHead className="sticky-header-date min-w-[110px] w-[110px] whitespace-nowrap">Ngày</TableHead>
                   <TableHead className="min-w-[140px] whitespace-nowrap">Đội 1</TableHead>
                   <TableHead className="text-center min-w-[100px] whitespace-nowrap">Tỉ số</TableHead>
                   <TableHead className="min-w-[140px] whitespace-nowrap">Đội 2</TableHead>
-                  <TableHead className="w-12 whitespace-nowrap"></TableHead>
+                  <TableHead className="w-20 whitespace-nowrap"></TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {currentMatches.map(m => (
                   <TableRow key={m.id}>
-                    <TableCell className="sticky-date min-w-[100px] w-[100px] whitespace-nowrap text-slate-300 text-xs font-mono">{format(parseISO(m.date), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="sticky-date min-w-[110px] w-[110px] whitespace-nowrap text-slate-300 text-xs font-mono">
+                      <div className="flex flex-col">
+                        <span>{format(parseISO(m.date), 'dd/MM/yyyy')}</span>
+                        {(m.date.includes('T') || m.date.includes(':')) && (
+                          <span className="text-[10px] text-slate-400/80 mt-0.5">
+                            {format(parseISO(m.date), 'HH:mm')}
+                          </span>
+                        )}
+                      </div>
+                    </TableCell>
                     <TableCell className="min-w-[140px] whitespace-nowrap">
                       <div className={`${m.score1 > m.score2 ? 'font-bold text-teal-400' : 'text-slate-300'} whitespace-nowrap`}>
                         {getPlayerName(m.team1[0])} - {getPlayerName(m.team1[1])}
@@ -88,9 +162,14 @@ export default function MatchHistory() {
                       </div>
                     </TableCell>
                     <TableCell>
-                      <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(m.id)} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10">
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
+                      <div className="flex items-center gap-1.5">
+                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(m)} className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 h-8 w-8 rounded-lg cursor-pointer">
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(m.id)} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-8 w-8 rounded-lg cursor-pointer">
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -115,15 +194,30 @@ export default function MatchHistory() {
                     <div className="flex items-center gap-1.5 text-xs font-mono text-slate-400">
                       <Calendar className="w-3.5 h-3.5 text-teal-500/85 flex-shrink-0" />
                       <span>{format(parseISO(m.date), 'dd/MM/yyyy')}</span>
+                      {(m.date.includes('T') || m.date.includes(':')) && (
+                        <span className="text-[10px] bg-white/5 px-1.5 py-0.5 rounded text-teal-400 font-medium">
+                          {format(parseISO(m.date), 'HH:mm')}
+                        </span>
+                      )}
                     </div>
-                    <Button 
-                      variant="ghost" 
-                      size="icon" 
-                      onClick={() => handleDeleteClick(m.id)} 
-                      className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-7 w-7 rounded-lg cursor-pointer"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleEditClick(m)} 
+                        className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 h-7 w-7 rounded-lg cursor-pointer"
+                      >
+                        <Pencil className="w-3.5 h-3.5" />
+                      </Button>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        onClick={() => handleDeleteClick(m.id)} 
+                        className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-7 w-7 rounded-lg cursor-pointer"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </Button>
+                    </div>
                   </div>
 
                   {/* Body: Match layout with teams and score */}
@@ -177,7 +271,7 @@ export default function MatchHistory() {
       </Card>
 
       {/* Beautiful Glassmorphism Confirmation Modal */}
-      {deletingId && (
+      {deletingId && createPortal(
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
           <div className="glass max-w-sm w-full p-6 space-y-4 shadow-2xl relative border border-white/10 animate-in fade-in zoom-in-95 duration-150">
             <button 
@@ -207,11 +301,12 @@ export default function MatchHistory() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Confirmation Modal for Clearing All Matches */}
-      {isConfirmingClearAll && (
+      {isConfirmingClearAll && createPortal(
         <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
           <div className="glass max-w-sm w-full p-6 space-y-4 shadow-2xl relative border border-white/10 animate-in fade-in zoom-in-95 duration-150">
             <button 
@@ -248,7 +343,100 @@ export default function MatchHistory() {
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
+      )}
+
+      {/* Beautiful Glassmorphism Edit Match Modal */}
+      {editingMatch && createPortal(
+        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
+          <div className="glass max-w-lg w-full p-6 space-y-4 shadow-2xl relative border border-white/10 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
+            <button 
+              onClick={() => setEditingMatch(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+            
+            <div className="flex items-center gap-3 text-teal-400 border-b border-white/5 pb-3">
+              <div className="p-2 bg-teal-500/15 rounded-lg border border-teal-500/20">
+                <Pencil className="w-5 h-5" />
+              </div>
+              <h3 className="font-bold text-lg text-white">Chỉnh sửa trận đấu</h3>
+            </div>
+
+            {editErrorMsg && (
+              <div className="p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2.5 text-rose-400 text-sm animate-in fade-in duration-200">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0" />
+                <span>{editErrorMsg}</span>
+              </div>
+            )}
+
+            <form onSubmit={confirmEdit} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Thời gian đấu</label>
+                <Input type="datetime-local" value={editDate} onChange={e => setEditDate(e.target.value)} required />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Đội 1 */}
+                <div className="space-y-3 p-4 bg-teal-500/5 rounded-xl border border-teal-500/10">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-teal-400">Đội 1</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={editT1p1} onChange={e => setEditT1p1(e.target.value)} required>
+                      <option value="" className="bg-slate-900">Chọn 1</option>
+                      {players.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                    </Select>
+                    <Select value={editT1p2} onChange={e => setEditT1p2(e.target.value)} required>
+                      <option value="" className="bg-slate-900">Chọn 2</option>
+                      {players.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                    </Select>
+                  </div>
+                </div>
+                
+                {/* Đội 2 */}
+                <div className="space-y-3 p-4 bg-indigo-500/5 rounded-xl border border-indigo-500/10">
+                  <label className="block text-xs font-bold uppercase tracking-wider text-indigo-400">Đội 2</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select value={editT2p1} onChange={e => setEditT2p1(e.target.value)} required>
+                      <option value="" className="bg-slate-900">Chọn 1</option>
+                      {players.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                    </Select>
+                    <Select value={editT2p2} onChange={e => setEditT2p2(e.target.value)} required>
+                      <option value="" className="bg-slate-900">Chọn 2</option>
+                      {players.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                    </Select>
+                  </div>
+                </div>
+              </div>
+
+              {/* Điểm số */}
+              <div className="bg-white/5 p-4 rounded-xl border border-white/5">
+                <div className="flex items-center justify-center gap-6">
+                  <div className="text-center w-24">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1.5">Điểm Đội 1</label>
+                    <Input type="number" min="0" value={editScore1} onChange={e => setEditScore1(e.target.value === '' ? '' : Number(e.target.value))} required className="text-center text-xl font-bold h-11" />
+                  </div>
+                  <div className="font-bold text-slate-500 text-2xl pt-4">-</div>
+                  <div className="text-center w-24">
+                    <label className="block text-[10px] uppercase font-bold tracking-wider text-slate-400 mb-1.5">Điểm Đội 2</label>
+                    <Input type="number" min="0" value={editScore2} onChange={e => setEditScore2(e.target.value === '' ? '' : Number(e.target.value))} required className="text-center text-xl font-bold h-11" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 justify-end pt-2">
+                <Button type="button" variant="ghost" onClick={() => setEditingMatch(null)} className="text-slate-300 hover:text-white">
+                  Hủy
+                </Button>
+                <Button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white font-semibold">
+                  Lưu thay đổi
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>,
+        document.body
       )}
     </div>
   );
