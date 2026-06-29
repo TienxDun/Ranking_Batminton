@@ -148,3 +148,104 @@ export function calculateLeaderboard(players: Player[], matches: Match[]): Playe
 
   return result;
 }
+
+export interface EloHistoryPoint {
+  name: string;
+  date: string;
+  [playerName: string]: number | string;
+}
+
+export function calculateEloHistory(players: Player[], matches: Match[]): EloHistoryPoint[] {
+  const history: EloHistoryPoint[] = [];
+
+  // Khởi tạo điểm Elo ban đầu
+  const currentRatings: Record<string, number> = {};
+  players.forEach(p => {
+    currentRatings[p.id] = 1500;
+  });
+
+  // Điểm bắt đầu
+  const startPoint: EloHistoryPoint = {
+    name: 'Bắt đầu',
+    date: '',
+  };
+  players.forEach(p => {
+    startPoint[p.name] = 1500;
+  });
+  history.push(startPoint);
+
+  // Sắp xếp các trận từ cũ nhất đến mới nhất
+  const chronologicalMatches = [...matches].reverse();
+
+  chronologicalMatches.forEach((m, index) => {
+    // Bỏ qua nếu người chơi không hợp lệ
+    const hasValidTeam1 = m.team1.every(id => currentRatings[id] !== undefined);
+    const hasValidTeam2 = m.team2.every(id => currentRatings[id] !== undefined);
+    if (!hasValidTeam1 || !hasValidTeam2) return;
+
+    // Get current ratings of players
+    const rA = currentRatings[m.team1[0]];
+    const rB = currentRatings[m.team1[1]];
+    const rC = currentRatings[m.team2[0]];
+    const rD = currentRatings[m.team2[1]];
+
+    // Average rating of each team
+    const avgR1 = (rA + rB) / 2;
+    const avgR2 = (rC + rD) / 2;
+
+    // Expected outcome (probability of winning) for Team 1
+    const E1 = 1 / (1 + Math.pow(10, (avgR2 - avgR1) / 400));
+    const E2 = 1 - E1;
+
+    // Actual outcome (S1, S2) blended from win/loss outcome and point ratio
+    let S1 = 0.5;
+    let S2 = 0.5;
+
+    if (m.isScoreExact) {
+      const s1 = m.score1;
+      const s2 = m.score2;
+      const totalPoints = s1 + s2;
+      const winPart = s1 > s2 ? 1.0 : s1 < s2 ? 0.0 : 0.5;
+
+      if (totalPoints > 0) {
+        const ratioPart = s1 / totalPoints;
+        S1 = 0.6 * winPart + 0.4 * ratioPart;
+      } else {
+        S1 = winPart;
+      }
+      S2 = 1 - S1;
+    } else {
+      const isTeam1Win = m.score1 > m.score2;
+      if (isTeam1Win) {
+        S1 = 0.6 * 1.0 + 0.4 * (21 / 36);
+      } else if (m.score2 > m.score1) {
+        S1 = 0.6 * 0.0 + 0.4 * (15 / 36);
+      } else {
+        S1 = 0.5;
+      }
+      S2 = 1 - S1;
+    }
+
+    const K = 40;
+    const ratingChange1 = K * (S1 - E1);
+    const ratingChange2 = K * (S2 - E2);
+
+    // Cập nhật rating
+    currentRatings[m.team1[0]] += ratingChange1;
+    currentRatings[m.team1[1]] += ratingChange1;
+    currentRatings[m.team2[0]] += ratingChange2;
+    currentRatings[m.team2[1]] += ratingChange2;
+
+    // Lưu lại điểm lịch sử sau trận đấu này
+    const point: EloHistoryPoint = {
+      name: `Trận ${index + 1}`,
+      date: m.date,
+    };
+    players.forEach(p => {
+      point[p.name] = Math.round(currentRatings[p.id]);
+    });
+    history.push(point);
+  });
+
+  return history;
+}
