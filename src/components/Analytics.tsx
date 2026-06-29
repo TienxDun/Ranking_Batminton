@@ -15,7 +15,7 @@ import {
   Bar,
   Cell
 } from 'recharts';
-import { Trophy, Users, Calendar, Award, Flame, Zap, BarChart2 } from 'lucide-react';
+import { Trophy, Users, Calendar, Award, Flame, Zap, BarChart2, Swords, Puzzle } from 'lucide-react';
 import { Select } from './ui/select';
 import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
 import { parseISO } from 'date-fns';
@@ -389,7 +389,7 @@ export default function Analytics() {
           <Card className="hover:border-teal-500/20 transition-all duration-300">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shadow-md">
-                <Users className="w-6 h-6" />
+                <Swords className="w-6 h-6" />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cày Ải Nhiều Nhất</span>
@@ -417,7 +417,7 @@ export default function Analytics() {
           <Card className="hover:border-rose-500/20 transition-all duration-300">
             <CardContent className="p-4 flex items-center gap-4">
               <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shadow-md">
-                <Zap className="w-6 h-6" />
+                <Puzzle className="w-6 h-6" />
               </div>
               <div className="flex flex-col">
                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cặp Bài Trùng Nhất</span>

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { CheckCircle2, AlertCircle, Minus, Plus } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Minus, Plus, Venus, Mars } from 'lucide-react';
 
 export default function PlayerManagement() {
   const { players, config, addPlayer, updatePlayer, setConfig } = useStore();
@@ -107,8 +107,8 @@ export default function PlayerManagement() {
                 onChange={e => setNewGender(e.target.value as 'male' | 'female')}
                 className="h-10 w-28 bg-slate-900 border border-white/10 rounded-lg px-3 text-xs text-slate-200 focus:outline-none focus:border-teal-500 font-medium cursor-pointer text-center"
               >
-                <option value="male">Nam ♂</option>
-                <option value="female">Nữ ♀</option>
+                <option value="male">Nam ♂ (Nam)</option>
+                <option value="female">Nữ ♀ (Nữ)</option>
               </select>
               <Button type="submit" className="h-10 px-6 font-bold flex-1 sm:flex-initial bg-teal-500 hover:bg-teal-600 text-white-force cursor-pointer">Thêm</Button>
             </div>
@@ -137,13 +137,23 @@ export default function PlayerManagement() {
                     <button
                       type="button"
                       onClick={() => updatePlayer(p.id, { gender: (p.gender || 'male') === 'female' ? 'male' : 'female' })}
-                      className={`text-[11px] px-2.5 py-1 rounded-full font-bold border transition-all duration-200 cursor-pointer shadow-sm ${
+                      className={`inline-flex items-center justify-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-bold border transition-all duration-200 cursor-pointer shadow-sm ${
                         (p.gender || 'male') === 'female' 
                           ? 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border-pink-500/20' 
                           : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border-sky-500/20'
                       }`}
                     >
-                      {(p.gender || 'male') === 'female' ? 'Nữ ♀' : 'Nam ♂'}
+                      {(p.gender || 'male') === 'female' ? (
+                        <>
+                          <span>Nữ</span>
+                          <Venus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </>
+                      ) : (
+                        <>
+                          <span>Nam</span>
+                          <Mars className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </>
+                      )}
                     </button>
                   </TableCell>
                   <TableCell className="text-center whitespace-nowrap hidden sm:table-cell">

@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
-import { Trophy, CalendarRange, Sparkles, UserCheck, Play, ArrowRight, RefreshCw, AlertCircle, HelpCircle } from 'lucide-react';
+import { Trophy, CalendarRange, Sparkles, UserCheck, Play, ArrowRight, RefreshCw, AlertCircle, HelpCircle, User } from 'lucide-react';
 import { ScheduledSet } from '../types';
 
 interface MatchSchedulerProps {
@@ -11,8 +11,9 @@ interface MatchSchedulerProps {
 }
 
 export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
-  const { players, schedule: dbSchedule, schedulerUIState, schedulerState, saveScheduleToDB, setSchedulerUIState, fetchDataFromServer } = useStore();
+  const { players, schedule: dbSchedule, schedulerUIState, schedulerState, saveScheduleToDB, setSchedulerUIState, fetchDataFromServer, theme } = useStore();
   const activePlayers = players.filter(p => p.isActive);
+  const isLight = theme === 'light';
 
   // Helper to calculate perfect sets
   const getPerfectSets = (playerCount: number) => {
@@ -455,14 +456,14 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                     }`}>
                       {isSelected && '✓'}
                     </div>
-                    <span className="truncate flex-1 flex items-center justify-between gap-1">
+                    <span className="truncate flex-1 flex items-center justify-between gap-1.5">
                       <span className="truncate">{player.name}</span>
-                      <span className={`text-[9px] px-1 py-0.2 rounded font-bold ${
+                      <span className={`inline-flex items-center justify-center p-0.5 rounded border flex-shrink-0 ${
                         player.gender === 'female' 
-                          ? 'text-pink-400 bg-pink-500/10 border border-pink-500/10' 
-                          : 'text-sky-400 bg-sky-500/10 border border-sky-500/10'
-                      }`}>
-                        {player.gender === 'female' ? '♀' : '♂'}
+                          ? 'text-pink-400 bg-pink-500/15 border-pink-500/30' 
+                          : 'text-sky-400 bg-sky-500/15 border-sky-500/30'
+                      }`} title={player.gender === 'female' ? 'Nữ' : 'Nam'}>
+                        <User className="w-3.5 h-3.5 stroke-[2.5]" />
                       </span>
                     </span>
                   </button>
@@ -548,14 +549,31 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                   <div className="flex items-center justify-between py-2 px-1 text-center">
                     {/* Đội 1 */}
                     <div className="flex-1 space-y-2">
-                      <div className="relative">
+                      <div 
+                        className="relative group"
+                        style={{
+                          '--team-bg': isLight ? 'rgba(13, 148, 136, 0.08)' : 'rgba(4, 47, 46, 0.4)',
+                          '--team-bg-hover': isLight ? 'rgba(13, 148, 136, 0.15)' : 'rgba(4, 47, 46, 0.6)',
+                          '--team-border': isLight ? 'rgba(13, 148, 136, 0.25)' : 'rgba(20, 184, 166, 0.2)',
+                          '--team-border-hover': isLight ? 'rgba(13, 148, 136, 0.4)' : 'rgba(20, 184, 166, 0.4)',
+                        } as React.CSSProperties}
+                      >
+                        <div className="w-full text-xs font-bold text-slate-100 bg-[var(--team-bg)] border-[var(--team-border)] group-hover:bg-[var(--team-bg-hover)] group-hover:border-[var(--team-border-hover)] px-2.5 py-2 rounded-xl border flex items-center justify-center gap-1.5 shadow-sm transition-all duration-150 pointer-events-none min-h-[34px]">
+                          <span className="truncate pr-3">{getPlayerName(set.team1[0])}</span>
+                          {players.find(p => p.id === set.team1[0])?.gender === 'female' ? (
+                            <User className="w-3.5 h-3.5 text-pink-400 stroke-[2.5] flex-shrink-0" />
+                          ) : (
+                            <User className="w-3.5 h-3.5 text-sky-400 stroke-[2.5] flex-shrink-0" />
+                          )}
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[8px] text-teal-400">▼</span>
+                        </div>
                         <select
                           value={set.team1[0]}
                           onChange={(e) => handlePlayerChange(set.id, set.team1[0], e.target.value)}
-                          className="w-full text-xs font-bold text-white bg-teal-950/40 hover:bg-teal-950/60 px-2.5 py-2 rounded-xl border border-teal-500/20 hover:border-teal-500/40 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-6 shadow-sm"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs focus:outline-none appearance-none"
                         >
                           <option value={set.team1[0]} className="bg-slate-950 text-white font-bold">
-                            {getPlayerName(set.team1[0])} {players.find(p => p.id === set.team1[0])?.gender === 'female' ? '♀' : '♂'}
+                            {getPlayerName(set.team1[0])} {players.find(p => p.id === set.team1[0])?.gender === 'female' ? '♀ (Nữ)' : '♂ (Nam)'}
                           </option>
                           {selectedIds
                             .filter(id => id !== set.team1[0] && !set.team1.includes(id) && !set.team2.includes(id))
@@ -565,17 +583,33 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                               </option>
                             ))}
                         </select>
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-teal-400">▼</span>
                       </div>
 
-                      <div className="relative">
+                      <div 
+                        className="relative group"
+                        style={{
+                          '--team-bg': isLight ? 'rgba(13, 148, 136, 0.08)' : 'rgba(4, 47, 46, 0.4)',
+                          '--team-bg-hover': isLight ? 'rgba(13, 148, 136, 0.15)' : 'rgba(4, 47, 46, 0.6)',
+                          '--team-border': isLight ? 'rgba(13, 148, 136, 0.25)' : 'rgba(20, 184, 166, 0.2)',
+                          '--team-border-hover': isLight ? 'rgba(13, 148, 136, 0.4)' : 'rgba(20, 184, 166, 0.4)',
+                        } as React.CSSProperties}
+                      >
+                        <div className="w-full text-xs font-bold text-slate-100 bg-[var(--team-bg)] border-[var(--team-border)] group-hover:bg-[var(--team-bg-hover)] group-hover:border-[var(--team-border-hover)] px-2.5 py-2 rounded-xl border flex items-center justify-center gap-1.5 shadow-sm transition-all duration-150 pointer-events-none min-h-[34px]">
+                          <span className="truncate pr-3">{getPlayerName(set.team1[1])}</span>
+                          {players.find(p => p.id === set.team1[1])?.gender === 'female' ? (
+                            <User className="w-3.5 h-3.5 text-pink-400 stroke-[2.5] flex-shrink-0" />
+                          ) : (
+                            <User className="w-3.5 h-3.5 text-sky-400 stroke-[2.5] flex-shrink-0" />
+                          )}
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[8px] text-teal-400">▼</span>
+                        </div>
                         <select
                           value={set.team1[1]}
                           onChange={(e) => handlePlayerChange(set.id, set.team1[1], e.target.value)}
-                          className="w-full text-xs font-bold text-white bg-teal-950/40 hover:bg-teal-950/60 px-2.5 py-2 rounded-xl border border-teal-500/20 hover:border-teal-500/40 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-6 shadow-sm"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs focus:outline-none appearance-none"
                         >
                           <option value={set.team1[1]} className="bg-slate-950 text-white font-bold">
-                            {getPlayerName(set.team1[1])} {players.find(p => p.id === set.team1[1])?.gender === 'female' ? '♀' : '♂'}
+                            {getPlayerName(set.team1[1])} {players.find(p => p.id === set.team1[1])?.gender === 'female' ? '♀ (Nữ)' : '♂ (Nam)'}
                           </option>
                           {selectedIds
                             .filter(id => id !== set.team1[1] && !set.team1.includes(id) && !set.team2.includes(id))
@@ -585,7 +619,6 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                               </option>
                             ))}
                         </select>
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-teal-400">▼</span>
                       </div>
                       <span className="text-[10px] uppercase tracking-widest text-teal-400 font-extrabold block mt-1.5 animate-pulse">Đội 1</span>
                     </div>
@@ -599,14 +632,31 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
 
                     {/* Đội 2 */}
                     <div className="flex-1 space-y-2">
-                      <div className="relative">
+                      <div 
+                        className="relative group"
+                        style={{
+                          '--team-bg': isLight ? 'rgba(217, 119, 6, 0.08)' : 'rgba(69, 26, 3, 0.3)',
+                          '--team-bg-hover': isLight ? 'rgba(217, 119, 6, 0.15)' : 'rgba(69, 26, 3, 0.5)',
+                          '--team-border': isLight ? 'rgba(217, 119, 6, 0.25)' : 'rgba(245, 158, 11, 0.25)',
+                          '--team-border-hover': isLight ? 'rgba(217, 119, 6, 0.4)' : 'rgba(245, 158, 11, 0.45)',
+                        } as React.CSSProperties}
+                      >
+                        <div className="w-full text-xs font-bold text-slate-100 bg-[var(--team-bg)] border-[var(--team-border)] group-hover:bg-[var(--team-bg-hover)] group-hover:border-[var(--team-border-hover)] px-2.5 py-2 rounded-xl border flex items-center justify-center gap-1.5 shadow-sm transition-all duration-150 pointer-events-none min-h-[34px]">
+                          <span className="truncate pr-3">{getPlayerName(set.team2[0])}</span>
+                          {players.find(p => p.id === set.team2[0])?.gender === 'female' ? (
+                            <User className="w-3.5 h-3.5 text-pink-400 stroke-[2.5] flex-shrink-0" />
+                          ) : (
+                            <User className="w-3.5 h-3.5 text-sky-400 stroke-[2.5] flex-shrink-0" />
+                          )}
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[8px] text-amber-400">▼</span>
+                        </div>
                         <select
                           value={set.team2[0]}
                           onChange={(e) => handlePlayerChange(set.id, set.team2[0], e.target.value)}
-                          className="w-full text-xs font-bold text-white bg-amber-950/30 hover:bg-amber-950/50 px-2.5 py-2 rounded-xl border border-amber-500/25 hover:border-amber-500/45 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-6 shadow-sm"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs focus:outline-none appearance-none"
                         >
                           <option value={set.team2[0]} className="bg-slate-950 text-white font-bold">
-                            {getPlayerName(set.team2[0])} {players.find(p => p.id === set.team2[0])?.gender === 'female' ? '♀' : '♂'}
+                            {getPlayerName(set.team2[0])} {players.find(p => p.id === set.team2[0])?.gender === 'female' ? '♀ (Nữ)' : '♂ (Nam)'}
                           </option>
                           {selectedIds
                             .filter(id => id !== set.team2[0] && !set.team1.includes(id) && !set.team2.includes(id))
@@ -616,17 +666,33 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                               </option>
                             ))}
                         </select>
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-amber-400">▼</span>
                       </div>
 
-                      <div className="relative">
+                      <div 
+                        className="relative group"
+                        style={{
+                          '--team-bg': isLight ? 'rgba(217, 119, 6, 0.08)' : 'rgba(69, 26, 3, 0.3)',
+                          '--team-bg-hover': isLight ? 'rgba(217, 119, 6, 0.15)' : 'rgba(69, 26, 3, 0.5)',
+                          '--team-border': isLight ? 'rgba(217, 119, 6, 0.25)' : 'rgba(245, 158, 11, 0.25)',
+                          '--team-border-hover': isLight ? 'rgba(217, 119, 6, 0.4)' : 'rgba(245, 158, 11, 0.45)',
+                        } as React.CSSProperties}
+                      >
+                        <div className="w-full text-xs font-bold text-slate-100 bg-[var(--team-bg)] border-[var(--team-border)] group-hover:bg-[var(--team-bg-hover)] group-hover:border-[var(--team-border-hover)] px-2.5 py-2 rounded-xl border flex items-center justify-center gap-1.5 shadow-sm transition-all duration-150 pointer-events-none min-h-[34px]">
+                          <span className="truncate pr-3">{getPlayerName(set.team2[1])}</span>
+                          {players.find(p => p.id === set.team2[1])?.gender === 'female' ? (
+                            <User className="w-3.5 h-3.5 text-pink-400 stroke-[2.5] flex-shrink-0" />
+                          ) : (
+                            <User className="w-3.5 h-3.5 text-sky-400 stroke-[2.5] flex-shrink-0" />
+                          )}
+                          <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[8px] text-amber-400">▼</span>
+                        </div>
                         <select
                           value={set.team2[1]}
                           onChange={(e) => handlePlayerChange(set.id, set.team2[1], e.target.value)}
-                          className="w-full text-xs font-bold text-white bg-amber-950/30 hover:bg-amber-950/50 px-2.5 py-2 rounded-xl border border-amber-500/25 hover:border-amber-500/45 text-center cursor-pointer focus:outline-none appearance-none transition-all duration-150 truncate pr-6 shadow-sm"
+                          className="absolute inset-0 w-full h-full opacity-0 cursor-pointer text-xs focus:outline-none appearance-none"
                         >
                           <option value={set.team2[1]} className="bg-slate-950 text-white font-bold">
-                            {getPlayerName(set.team2[1])} {players.find(p => p.id === set.team2[1])?.gender === 'female' ? '♀' : '♂'}
+                            {getPlayerName(set.team2[1])} {players.find(p => p.id === set.team2[1])?.gender === 'female' ? '♀ (Nữ)' : '♂ (Nam)'}
                           </option>
                           {selectedIds
                             .filter(id => id !== set.team2[1] && !set.team1.includes(id) && !set.team2.includes(id))
@@ -636,7 +702,6 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
                               </option>
                             ))}
                         </select>
-                        <span className="absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none text-[8px] text-amber-400">▼</span>
                       </div>
                       <span className="text-[10px] uppercase tracking-widest text-amber-400 font-extrabold block mt-1.5">Đội 2</span>
                     </div>
