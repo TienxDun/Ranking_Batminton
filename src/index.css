@@ -205,101 +205,103 @@ body {
   scrollbar-width: none;
 }
 
-/* Sticky table columns styling */
-.sticky-rank, .sticky-name, .sticky-date {
-  position: sticky !important;
-}
+/* Sticky table columns styling - Chỉ áp dụng trên màn hình md trở lên để tránh lỗi che Elo trên mobile */
+@media (min-width: 768px) {
+  .sticky-rank, .sticky-name, .sticky-date {
+    position: sticky !important;
+  }
 
-.sticky-rank {
-  left: 0;
-  z-index: 10;
-}
+  .sticky-rank {
+    left: 0;
+    z-index: 10;
+  }
 
-.sticky-name {
-  left: 3.5rem; /* 56px */
-  z-index: 10;
-}
+  .sticky-name {
+    left: 3.5rem; /* 56px */
+    z-index: 10;
+  }
 
-.sticky-date {
-  left: 0;
-  z-index: 10;
-}
+  .sticky-date {
+    left: 0;
+    z-index: 10;
+  }
 
-.sticky-header-rank, .sticky-header-name, .sticky-header-date {
-  position: sticky !important;
-  z-index: 20;
-}
+  .sticky-header-rank, .sticky-header-name, .sticky-header-date {
+    position: sticky !important;
+    z-index: 20;
+  }
 
-.sticky-header-rank {
-  left: 0;
-}
+  .sticky-header-rank {
+    left: 0;
+  }
 
-.sticky-header-name {
-  left: 3.5rem;
-}
+  .sticky-header-name {
+    left: 3.5rem;
+  }
 
-.sticky-header-date {
-  left: 0;
-}
+  .sticky-header-date {
+    left: 0;
+  }
 
-/* Backgrounds for sticky header columns */
-.sticky-header-rank, .sticky-header-name, .sticky-header-date {
-  background-color: #0f172a !important;
-}
-.light .sticky-header-rank, .light .sticky-header-name, .light .sticky-header-date {
-  background-color: #ffffff !important;
-}
+  /* Backgrounds for sticky header columns */
+  .sticky-header-rank, .sticky-header-name, .sticky-header-date {
+    background-color: #0f172a !important;
+  }
+  .light .sticky-header-rank, .light .sticky-header-name, .light .sticky-header-date {
+    background-color: #ffffff !important;
+  }
 
-/* Opaque row backgrounds for sticky cells to prevent text showing underneath */
-.sticky-rank, .sticky-name, .sticky-date {
-  background-color: #0f172a; /* Fallback same as page */
-}
-.light .sticky-rank, .light .sticky-name, .light .sticky-date {
-  background-color: #ffffff;
-}
+  /* Opaque row backgrounds for sticky cells to prevent text showing underneath */
+  .sticky-rank, .sticky-name, .sticky-date {
+    background-color: #0f172a; /* Fallback same as page */
+  }
+  .light .sticky-rank, .light .sticky-name, .light .sticky-date {
+    background-color: #ffffff;
+  }
 
-/* Row-specific highlights inherited correctly */
-.bg-amber-500\/5 .sticky-rank, .bg-amber-500\/5 .sticky-name {
-  background-color: #171c2b !important;
-}
-.light .bg-amber-500\/5 .sticky-rank, .light .bg-amber-500\/5 .sticky-name {
-  background-color: #fff9e6 !important;
-}
+  /* Row-specific highlights inherited correctly */
+  .bg-amber-500\/5 .sticky-rank, .bg-amber-500\/5 .sticky-name {
+    background-color: #171c2b !important;
+  }
+  .light .bg-amber-500\/5 .sticky-rank, .light .bg-amber-500\/5 .sticky-name {
+    background-color: #fff9e6 !important;
+  }
 
-.bg-slate-300\/5 .sticky-rank, .bg-slate-300\/5 .sticky-name {
-  background-color: #131a29 !important;
-}
-.light .bg-slate-300\/5 .sticky-rank, .light .bg-slate-300\/5 .sticky-name {
-  background-color: #f5f8fc !important;
-}
+  .bg-slate-300\/5 .sticky-rank, .bg-slate-300\/5 .sticky-name {
+    background-color: #131a29 !important;
+  }
+  .light .bg-slate-300\/5 .sticky-rank, .light .bg-slate-300\/5 .sticky-name {
+    background-color: #f5f8fc !important;
+  }
 
-.bg-amber-700\/5 .sticky-rank, .bg-amber-700\/5 .sticky-name {
-  background-color: #1a1725 !important;
-}
-.light .bg-amber-700\/5 .sticky-rank, .light .bg-amber-700\/5 .sticky-name {
-  background-color: #fff4ea !important;
-}
+  .bg-amber-700\/5 .sticky-rank, .bg-amber-700\/5 .sticky-name {
+    background-color: #1a1725 !important;
+  }
+  .light .bg-amber-700\/5 .sticky-rank, .light .bg-amber-700\/5 .sticky-name {
+    background-color: #fff4ea !important;
+  }
 
-/* Keep hover background applied on sticky cells */
-tr:hover .sticky-rank, tr:hover .sticky-name, tr:hover .sticky-date {
-  background-color: #1e293b !important;
-}
-.light tr:hover .sticky-rank, .light tr:hover .sticky-name, .light tr:hover .sticky-date {
-  background-color: #e2e8f0 !important;
-}
+  /* Keep hover background applied on sticky cells */
+  tr:hover .sticky-rank, tr:hover .sticky-name, tr:hover .sticky-date {
+    background-color: #1e293b !important;
+  }
+  .light tr:hover .sticky-rank, .light tr:hover .sticky-name, .light tr:hover .sticky-date {
+    background-color: #e2e8f0 !important;
+  }
 
-/* Elegant visual vertical divider for pinned column edges */
-.sticky-name::after, .sticky-header-name::after, .sticky-date::after, .sticky-header-date::after {
-  content: '';
-  position: absolute;
-  top: 0;
-  right: 0;
-  bottom: 0;
-  width: 1px;
-  background-color: rgba(255, 255, 255, 0.08);
-}
-.light .sticky-name::after, .light .sticky-header-name::after, .light .sticky-date::after, .light .sticky-header-date::after {
-  background-color: rgba(15, 23, 42, 0.08);
+  /* Elegant visual vertical divider for pinned column edges */
+  .sticky-name::after, .sticky-header-name::after, .sticky-date::after, .sticky-header-date::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: rgba(255, 255, 255, 0.08);
+  }
+  .light .sticky-name::after, .light .sticky-header-name::after, .light .sticky-date::after, .light .sticky-header-date::after {
+    background-color: rgba(15, 23, 42, 0.08);
+  }
 }
 
 /* Animations for Tab Switching */

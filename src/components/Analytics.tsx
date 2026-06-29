@@ -350,10 +350,12 @@ export default function Analytics() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
               <CardTitle className="text-sm xs:text-base sm:text-lg font-bold flex items-center gap-2 text-white">
-                <Trophy className="w-5 h-5 text-amber-500" />
+                <Trophy className="w-5 h-5 text-amber-500 flex-shrink-0" />
                 BIẾN ĐỘNG ĐIỂM ELO
               </CardTitle>
-              <CardDescription>Biểu đồ biến động điểm sức mạnh Elo qua các trận đấu</CardDescription>
+              <CardDescription className="text-[11px] sm:text-xs text-slate-400 font-medium mt-0.5 leading-tight">
+                Biến động sức mạnh Elo qua các trận đấu
+              </CardDescription>
             </div>
           </div>
         </CardHeader>
@@ -444,13 +446,13 @@ export default function Analytics() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Duo Synergy */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm xs:text-base sm:text-lg font-bold flex items-center gap-2 text-white">
-              <Award className="w-5 h-5 text-emerald-400" />
+              <Award className="w-5 h-5 text-emerald-400 flex-shrink-0" />
               CẶP BÀI TRÙNG (TOP 5)
             </CardTitle>
-            <CardDescription>
-              Tỉ lệ thắng (%) khi thi đấu cùng nhau (Tối thiểu 2 trận)
+            <CardDescription className="text-[11px] sm:text-xs text-slate-400 font-medium mt-0.5 leading-tight">
+              Tỉ lệ thắng khi thi đấu cùng nhau (≥ 2 trận)
             </CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-6">
@@ -512,12 +514,14 @@ export default function Analytics() {
 
         {/* Activity Matches count */}
         <Card>
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle className="text-sm xs:text-base sm:text-lg font-bold flex items-center gap-2 text-white">
-              <Calendar className="w-5 h-5 text-indigo-400" />
+              <Calendar className="w-5 h-5 text-indigo-400 flex-shrink-0" />
               TẦN SUẤT TRẬN ĐẤU
             </CardTitle>
-            <CardDescription>Số lượng trận đấu được tổ chức theo ngày</CardDescription>
+            <CardDescription className="text-[11px] sm:text-xs text-slate-400 font-medium mt-0.5 leading-tight">
+              Số trận đấu được tổ chức theo từng ngày
+            </CardDescription>
           </CardHeader>
           <CardContent className="p-3 sm:p-6">
             <div className="h-[260px] w-full">

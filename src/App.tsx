@@ -12,7 +12,7 @@ import MatchHistory from './components/MatchHistory';
 import PlayerManagement from './components/PlayerManagement';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { Button } from './components/ui/button';
-import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2 } from 'lucide-react';
+import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings } from 'lucide-react';
 import { useStore } from './store';
 
 type Tab = 'dashboard' | 'analytics' | 'add' | 'schedule' | 'history' | 'players';
@@ -213,6 +213,16 @@ export default function App() {
             >
               {theme === 'light' ? <Moon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-400" /> : <Sun className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400" />}
             </button>
+            <button
+              onClick={() => setActiveTab('players')}
+              className={`w-7 h-7 rounded-lg bg-slate-950/40 border flex items-center justify-center shadow-lg hover:border-teal-500/30 text-slate-300 hover:text-teal-400 active:scale-95 transition-all duration-300 cursor-pointer md:hidden ${
+                activeTab === 'players' ? 'border-teal-500/30 text-teal-400 bg-teal-500/10' : 'border-white/10'
+              }`}
+              title="Cài đặt quản lý người chơi"
+              aria-label="Settings"
+            >
+              <Settings className="w-3.5 h-3.5" />
+            </button>
           </div>
         </div>
       </header>
@@ -253,7 +263,7 @@ export default function App() {
           }`}
         >
           <Trophy className="w-4.5 h-4.5 mb-1" />
-          <span className="text-[9px] font-semibold">BXH</span>
+          <span className="text-[10px] font-semibold">BXH</span>
         </button>
         <button 
           onClick={() => setActiveTab('analytics')} 
@@ -262,7 +272,7 @@ export default function App() {
           }`}
         >
           <BarChart2 className="w-4.5 h-4.5 mb-1" />
-          <span className="text-[9px] font-semibold">Thống Kê</span>
+          <span className="text-[10px] font-semibold">Thống Kê</span>
         </button>
         <button 
           onClick={() => setActiveTab('schedule')} 
@@ -271,7 +281,7 @@ export default function App() {
           }`}
         >
           <CalendarRange className="w-4.5 h-4.5 mb-1" />
-          <span className="text-[9px] font-semibold">Xếp Lịch</span>
+          <span className="text-[10px] font-semibold">Xếp Lịch</span>
         </button>
         <button 
           onClick={() => setActiveTab('add')} 
@@ -280,7 +290,7 @@ export default function App() {
           }`}
         >
           <PlusCircle className="w-4.5 h-4.5 mb-1" />
-          <span className="text-[9px] font-semibold">Thêm</span>
+          <span className="text-[10px] font-semibold">Thêm</span>
         </button>
         <button 
           onClick={() => setActiveTab('history')} 
@@ -289,16 +299,7 @@ export default function App() {
           }`}
         >
           <History className="w-4.5 h-4.5 mb-1" />
-          <span className="text-[9px] font-semibold">Lịch Sử</span>
-        </button>
-        <button 
-          onClick={() => setActiveTab('players')} 
-          className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${
-            activeTab === 'players' ? 'text-teal-400 scale-105' : 'text-slate-400'
-          }`}
-        >
-          <Users className="w-4.5 h-4.5 mb-1" />
-          <span className="text-[9px] font-semibold">Cài Đặt</span>
+          <span className="text-[10px] font-semibold">Lịch Sử</span>
         </button>
       </nav>
 
