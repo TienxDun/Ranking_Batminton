@@ -117,7 +117,7 @@ const ActivityTooltip = ({ active, payload, theme }: any) => {
   return null;
 };
 
-export default function Analytics() {
+export default function Analytics({ active = true }: { active?: boolean }) {
   const { players, matches, theme } = useStore();
   const [selectedWeek, setSelectedWeek] = useState<string>('all');
 
@@ -491,44 +491,46 @@ export default function Analytics() {
           </div>
 
           <div className="h-[320px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={eloHistory}
-                margin={{ top: 10, right: 5, left: -30, bottom: 0 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
-                <XAxis
-                  dataKey="name"
-                  stroke={axisStroke}
-                  tick={{ fill: textFill }}
-                  fontSize={10}
-                  tickLine={false}
-                />
-                <YAxis
-                  domain={['dataMin - 50', 'dataMax + 50']}
-                  stroke={axisStroke}
-                  tick={{ fill: textFill }}
-                  fontSize={10}
-                  tickLine={false}
-                />
-                <Tooltip content={<EloTooltip theme={theme} />} />
-                {players.map((p, index) => {
-                  if (!visiblePlayers.includes(p.name)) return null;
-                  return (
-                    <Line
-                      key={p.id}
-                      type="monotone"
-                      dataKey={p.name}
-                      name={p.name}
-                      stroke={getPlayerColor(p.name, index)}
-                      strokeWidth={3}
-                      dot={{ r: 2 }}
-                      activeDot={{ r: 5 }}
-                    />
-                  );
-                })}
-              </LineChart>
-            </ResponsiveContainer>
+            {active && (
+              <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                <LineChart
+                  data={eloHistory}
+                  margin={{ top: 10, right: 5, left: -30, bottom: 0 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} />
+                  <XAxis
+                    dataKey="name"
+                    stroke={axisStroke}
+                    tick={{ fill: textFill }}
+                    fontSize={10}
+                    tickLine={false}
+                  />
+                  <YAxis
+                    domain={['dataMin - 50', 'dataMax + 50']}
+                    stroke={axisStroke}
+                    tick={{ fill: textFill }}
+                    fontSize={10}
+                    tickLine={false}
+                  />
+                  <Tooltip content={<EloTooltip theme={theme} />} />
+                  {players.map((p, index) => {
+                    if (!visiblePlayers.includes(p.name)) return null;
+                    return (
+                      <Line
+                        key={p.id}
+                        type="monotone"
+                        dataKey={p.name}
+                        name={p.name}
+                        stroke={getPlayerColor(p.name, index)}
+                        strokeWidth={3}
+                        dot={{ r: 2 }}
+                        activeDot={{ r: 5 }}
+                      />
+                    );
+                  })}
+                </LineChart>
+              </ResponsiveContainer>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -549,51 +551,53 @@ export default function Analytics() {
           <CardContent className="p-3 sm:p-6">
             {processedDuos.length > 0 ? (
               <div className="h-[260px] w-full">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart
-                    data={processedDuos}
-                    layout="vertical"
-                    margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
-                    <XAxis
-                      type="number"
-                      domain={[0, 100]}
-                      stroke={axisStroke}
-                      tick={{ fill: textFill }}
-                      fontSize={10}
-                      tickLine={false}
-                    />
-                    <YAxis
-                      dataKey="names"
-                      type="category"
-                      stroke={axisStroke}
-                      tick={{ fill: textFill }}
-                      fontSize={10}
-                      width={120}
-                      tickLine={false}
-                    />
-                    <Tooltip content={<DuoTooltip theme={theme} />} />
-                    <Bar
-                      dataKey="winRate"
-                      radius={[0, 4, 4, 0]}
-                      barSize={12}
+                {active && (
+                  <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                    <BarChart
+                      data={processedDuos}
+                      layout="vertical"
+                      margin={{ top: 5, right: 5, left: -25, bottom: 5 }}
                     >
-                      {processedDuos.map((entry, index) => (
-                        <Cell
-                          key={`cell-${index}`}
-                          fill={index === 0 ? '#10b981' : 'url(#bar-grad)'} // Màu lục nổi bật cho vị trí Top 1
-                        />
-                      ))}
-                    </Bar>
-                    <defs>
-                      <linearGradient id="bar-grad" x1="0" y1="0" x2="1" y2="0">
-                        <stop offset="0%" stopColor="#2dd4bf" stopOpacity={0.4} />
-                        <stop offset="100%" stopColor="#2dd4bf" stopOpacity={0.8} />
-                      </linearGradient>
-                    </defs>
-                  </BarChart>
-                </ResponsiveContainer>
+                      <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} horizontal={false} />
+                      <XAxis
+                        type="number"
+                        domain={[0, 100]}
+                        stroke={axisStroke}
+                        tick={{ fill: textFill }}
+                        fontSize={10}
+                        tickLine={false}
+                      />
+                      <YAxis
+                        dataKey="names"
+                        type="category"
+                        stroke={axisStroke}
+                        tick={{ fill: textFill }}
+                        fontSize={10}
+                        width={120}
+                        tickLine={false}
+                      />
+                      <Tooltip content={<DuoTooltip theme={theme} />} />
+                      <Bar
+                        dataKey="winRate"
+                        radius={[0, 4, 4, 0]}
+                        barSize={12}
+                      >
+                        {processedDuos.map((entry, index) => (
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={index === 0 ? '#10b981' : 'url(#bar-grad)'} // Màu lục nổi bật cho vị trí Top 1
+                          />
+                        ))}
+                      </Bar>
+                      <defs>
+                        <linearGradient id="bar-grad" x1="0" y1="0" x2="1" y2="0">
+                          <stop offset="0%" stopColor="#2dd4bf" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="#2dd4bf" stopOpacity={0.8} />
+                        </linearGradient>
+                      </defs>
+                    </BarChart>
+                  </ResponsiveContainer>
+                )}
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center h-[260px] text-slate-500">
@@ -616,41 +620,43 @@ export default function Analytics() {
           </CardHeader>
           <CardContent className="p-3 sm:p-6">
             <div className="h-[260px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={activityStats}
-                  margin={{ top: 5, right: 5, left: -30, bottom: 5 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
-                  <XAxis
-                    dataKey="formattedDate"
-                    stroke={axisStroke}
-                    tick={{ fill: textFill }}
-                    fontSize={10}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    stroke={axisStroke}
-                    tick={{ fill: textFill }}
-                    fontSize={10}
-                    allowDecimals={false}
-                    tickLine={false}
-                  />
-                  <Tooltip content={<ActivityTooltip theme={theme} />} />
-                  <Bar
-                    dataKey="count"
-                    fill="url(#active-bar-grad)"
-                    radius={[4, 4, 0, 0]}
-                    barSize={20}
-                  />
-                  <defs>
-                    <linearGradient id="active-bar-grad" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.8} />
-                      <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.2} />
-                    </linearGradient>
-                  </defs>
-                </BarChart>
-              </ResponsiveContainer>
+              {active && (
+                <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={0}>
+                  <BarChart
+                    data={activityStats}
+                    margin={{ top: 5, right: 5, left: -30, bottom: 5 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke={gridStroke} vertical={false} />
+                    <XAxis
+                      dataKey="formattedDate"
+                      stroke={axisStroke}
+                      tick={{ fill: textFill }}
+                      fontSize={10}
+                      tickLine={false}
+                    />
+                    <YAxis
+                      stroke={axisStroke}
+                      tick={{ fill: textFill }}
+                      fontSize={10}
+                      allowDecimals={false}
+                      tickLine={false}
+                    />
+                    <Tooltip content={<ActivityTooltip theme={theme} />} />
+                    <Bar
+                      dataKey="count"
+                      fill="url(#active-bar-grad)"
+                      radius={[4, 4, 0, 0]}
+                      barSize={20}
+                    />
+                    <defs>
+                      <linearGradient id="active-bar-grad" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="#38bdf8" stopOpacity={0.8} />
+                        <stop offset="100%" stopColor="#38bdf8" stopOpacity={0.2} />
+                      </linearGradient>
+                    </defs>
+                  </BarChart>
+                </ResponsiveContainer>
+              )}
             </div>
           </CardContent>
         </Card>

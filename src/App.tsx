@@ -232,7 +232,7 @@ export default function App() {
           <Dashboard />
         </div>
         <div className={activeTab === 'analytics' ? 'tab-content-active' : 'hidden'}>
-          <Analytics />
+          <Analytics active={activeTab === 'analytics'} />
         </div>
         <div className={activeTab === 'schedule' ? 'tab-content-active' : 'hidden'}>
           <MatchScheduler onFillMatch={handleFillMatch} />
