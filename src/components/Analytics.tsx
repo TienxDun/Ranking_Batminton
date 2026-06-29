@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../store';
 import { calculateLeaderboard, calculateEloHistory } from '../utils/calculations';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
@@ -16,6 +16,9 @@ import {
   Cell
 } from 'recharts';
 import { Trophy, Users, Calendar, Award, Flame, Zap, BarChart2 } from 'lucide-react';
+import { Select } from './ui/select';
+import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
+import { parseISO } from 'date-fns';
 
 const PLAYER_COLORS: Record<string, string> = {
   'Khoa': '#2dd4bf',   // Teal
@@ -116,10 +119,65 @@ const ActivityTooltip = ({ active, payload, theme }: any) => {
 
 export default function Analytics() {
   const { players, matches, theme } = useStore();
+  const [selectedWeek, setSelectedWeek] = useState<string>('all');
+
+  const weekOptions = useMemo(() => getWeekOptions(matches), [matches]);
+
+  const filteredMatches = useMemo(() => {
+    if (selectedWeek === 'all') return matches;
+    const weekInfo = weekOptions.find(w => w.id === selectedWeek);
+    if (!weekInfo) return matches;
+    return matches.filter(m => isMatchInWeek(m.date, weekInfo.start, weekInfo.end));
+  }, [matches, selectedWeek, weekOptions]);
 
   // Khởi tạo bảng xếp hạng và Elo history
-  const leaderboard = useMemo(() => calculateLeaderboard(players, matches), [players, matches]);
-  const eloHistory = useMemo(() => calculateEloHistory(players, matches), [players, matches]);
+  const leaderboard = useMemo(() => calculateLeaderboard(players, filteredMatches), [players, filteredMatches]);
+  const fullEloHistory = useMemo(() => calculateEloHistory(players, matches), [players, matches]);
+
+  // Lọc Elo History theo tuần được chọn, giữ nguyên Elo tích lũy thực tế
+  const eloHistory = useMemo(() => {
+    if (selectedWeek === 'all') return fullEloHistory;
+    const weekInfo = weekOptions.find(w => w.id === selectedWeek);
+    if (!weekInfo) return fullEloHistory;
+
+    const weekPoints = fullEloHistory.filter(pt => pt.date && isMatchInWeek(pt.date, weekInfo.start, weekInfo.end));
+
+    if (weekPoints.length === 0) {
+      let lastPointBeforeWeek = fullEloHistory[0];
+      for (let i = 1; i < fullEloHistory.length; i++) {
+        const pt = fullEloHistory[i];
+        try {
+          const ptDate = parseISO(pt.date);
+          if (ptDate.getTime() < weekInfo.start.getTime()) {
+            lastPointBeforeWeek = pt;
+          } else {
+            break;
+          }
+        } catch (e) {}
+      }
+      return [{
+        ...lastPointBeforeWeek,
+        name: 'Không có trận',
+        date: ''
+      }];
+    }
+
+    const firstWeekPointIndex = fullEloHistory.findIndex(pt => pt === weekPoints[0]);
+    const startPoint = firstWeekPointIndex > 0 ? fullEloHistory[firstWeekPointIndex - 1] : fullEloHistory[0];
+
+    const formattedStartPoint = {
+      ...startPoint,
+      name: 'Bắt đầu',
+      date: ''
+    };
+
+    const formattedWeekPoints = weekPoints.map((pt, idx) => ({
+      ...pt,
+      name: `Trận ${idx + 1}`
+    }));
+
+    return [formattedStartPoint, ...formattedWeekPoints];
+  }, [fullEloHistory, selectedWeek, weekOptions]);
 
   // Lấy danh sách Top 3 người chơi có Elo cao nhất để hiển thị mặc định
   const defaultSelectedPlayers = useMemo(() => {
@@ -128,11 +186,16 @@ export default function Analytics() {
 
   const [visiblePlayers, setVisiblePlayers] = useState<string[]>(defaultSelectedPlayers);
 
+  // Tự động cập nhật danh sách người chơi hiển thị khi đổi tuần
+  useEffect(() => {
+    setVisiblePlayers(leaderboard.slice(0, 3).map(p => p.name));
+  }, [selectedWeek, leaderboard]);
+
   // 1. Phân tích Cặp đôi ăn ý (Duo synergy)
   const duoStats = useMemo(() => {
     const duoMap: Record<string, { wins: number; total: number; names: string }> = {};
 
-    matches.forEach(m => {
+    filteredMatches.forEach(m => {
       const isTeam1Win = m.score1 > m.score2;
       const isTeam2Win = m.score2 > m.score1;
       const isDraw = m.score1 === m.score2;
@@ -172,7 +235,7 @@ export default function Analytics() {
     }));
 
     return list;
-  }, [matches, players]);
+  }, [filteredMatches, players]);
 
   // Ưu tiên lọc các cặp thi đấu từ 2 trận trở lên để số liệu tin cậy
   const processedDuos = useMemo(() => {
@@ -189,7 +252,7 @@ export default function Analytics() {
   // 2. Thống kê trận đấu theo ngày (Activity)
   const activityStats = useMemo(() => {
     const map: Record<string, number> = {};
-    matches.forEach(m => {
+    filteredMatches.forEach(m => {
       const d = m.date.substring(0, 10);
       map[d] = (map[d] || 0) + 1;
     });
@@ -205,7 +268,7 @@ export default function Analytics() {
         };
       })
       .sort((a, b) => a.date.localeCompare(b.date));
-  }, [matches]);
+  }, [filteredMatches]);
 
   // 3. Tính toán chuỗi thắng hiện tại của mỗi người chơi
   const playerStreaks = useMemo(() => {
@@ -213,8 +276,8 @@ export default function Analytics() {
     players.forEach(p => {
       streaks[p.id] = 0;
       
-      // matches được sắp xếp mới nhất lên đầu
-      for (const m of matches) {
+      // filteredMatches được sắp xếp mới nhất lên đầu
+      for (const m of filteredMatches) {
         const isTeam1 = m.team1.includes(p.id);
         const isTeam2 = m.team2.includes(p.id);
         if (!isTeam1 && !isTeam2) continue; // Không tham gia trận này, bỏ qua
@@ -231,7 +294,7 @@ export default function Analytics() {
       }
     });
     return streaks;
-  }, [matches, players]);
+  }, [filteredMatches, players]);
 
   // 4. Quick Insights
   const insights = useMemo(() => {
@@ -292,6 +355,34 @@ export default function Analytics() {
 
   return (
     <div className="space-y-6" id="analytics-content">
+      {/* Bộ lọc thời gian theo tuần */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 glass p-4 mb-4">
+        <div className="flex items-center gap-2.5">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-teal-500/10 to-indigo-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shadow-md">
+            <BarChart2 className="w-5 h-5 text-teal-400 animate-pulse" />
+          </div>
+          <div>
+            <h2 className="text-sm sm:text-base font-bold text-white uppercase tracking-wider">Thống Kê Chi Tiết</h2>
+            <p className="text-[11px] text-slate-400 font-medium">Phân tích hiệu suất và xu hướng của các tuyển thủ</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+          <span className="text-xs text-slate-400 whitespace-nowrap">Thời gian:</span>
+          <Select 
+            value={selectedWeek} 
+            onChange={e => setSelectedWeek(e.target.value)} 
+            className="w-full sm:w-[260px] text-xs h-9 bg-slate-900 border-white/10 text-white rounded-lg"
+          >
+            <option value="all" className="bg-slate-900">Toàn thời gian</option>
+            {weekOptions.map(option => (
+              <option key={option.id} value={option.id} className="bg-slate-900">
+                {option.label}
+              </option>
+            ))}
+          </Select>
+        </div>
+      </div>
+
       {/* 1. Quick Insights Cards */}
       {insights && (
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
