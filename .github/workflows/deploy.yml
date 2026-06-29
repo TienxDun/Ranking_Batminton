@@ -31,10 +31,19 @@ jobs:
       - name: Thiết lập Node.js
         uses: actions/setup-node@v6
         with:
-          node-version: 20
-          cache: 'npm'
+          node-version: 22
+
+      - name: Cache node modules
+        id: cache-npm
+        uses: actions/cache@v6
+        with:
+          path: node_modules
+          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-npm-
 
       - name: Cài đặt thư viện phụ thuộc
+        if: steps.cache-npm.outputs.cache-hit != 'true'
         run: npm ci
 
       - name: Kiểm tra lỗi TypeScript / Lint
@@ -51,7 +60,7 @@ jobs:
       # Chỉ tải lên sản phẩm tĩnh nếu build trên nhánh chính để chuẩn bị triển khai
       - name: Tải lên sản phẩm tĩnh
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
-        uses: actions/upload-pages-artifact@v3
+        uses: actions/upload-pages-artifact@v5
         with:
           path: './dist'
 
