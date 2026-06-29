@@ -44,7 +44,7 @@ export default function Dashboard() {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead className="w-14 min-w-[3.5rem] max-w-[3.5rem] text-center sticky-header-rank whitespace-nowrap">Hạng</TableHead>
+            <TableHead className="w-14 min-w-[3.5rem] max-w-[3.5rem] text-center sticky-header-rank whitespace-nowrap px-2">Hạng</TableHead>
             <TableHead className="sticky-header-name min-w-[110px] whitespace-nowrap">Tên</TableHead>
             <TableHead className="text-center whitespace-nowrap">Elo</TableHead>
             <TableHead className="text-center whitespace-nowrap">Trận</TableHead>
@@ -67,10 +67,10 @@ export default function Dashboard() {
 
             return (
               <TableRow key={player.playerId} className={rowClass}>
-                <TableCell className="w-14 min-w-[3.5rem] max-w-[3.5rem] text-center font-medium sticky-rank whitespace-nowrap">
-                  {isGold ? <div className="flex items-center justify-center gap-1 text-amber-400 font-bold"><Trophy className="w-4 h-4 text-amber-400" /> 01</div> :
-                   isSilver ? <div className="flex items-center justify-center gap-1 text-slate-300 font-bold"><Medal className="w-4 h-4 text-slate-400" /> 02</div> :
-                   isBronze ? <div className="flex items-center justify-center gap-1 text-amber-600 font-bold"><Medal className="w-4 h-4 text-amber-700" /> 03</div> :
+                <TableCell className="w-14 min-w-[3.5rem] max-w-[3.5rem] text-center font-medium sticky-rank whitespace-nowrap px-2">
+                  {isGold ? <div className="flex items-center justify-center gap-1 text-amber-400 font-bold"><Trophy className="w-4 h-4 text-amber-400 shrink-0" /> 01</div> :
+                   isSilver ? <div className="flex items-center justify-center gap-1 text-slate-300 font-bold"><Medal className="w-4 h-4 text-slate-400 shrink-0" /> 02</div> :
+                   isBronze ? <div className="flex items-center justify-center gap-1 text-amber-600 font-bold"><Medal className="w-4 h-4 text-amber-700 shrink-0" /> 03</div> :
                    String(player.displayRank).padStart(2, '0')}
                 </TableCell>
                 <TableCell className="font-semibold text-white sticky-name min-w-[110px] whitespace-nowrap">{player.name}</TableCell>
