@@ -21,6 +21,9 @@ concurrency:
   group: 'pages'
   cancel-in-progress: true
 
+env:
+  NODE_OPTIONS: "--no-deprecation"
+
 jobs:
   lint-and-build:
     runs-on: ubuntu-latest
