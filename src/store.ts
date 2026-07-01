@@ -11,6 +11,7 @@ interface AppState {
   matches: Match[];
   config: LeaderboardConfig;
   theme: 'dark' | 'light';
+  selectedWeek: string;
   // schedule: lịch thi đấu đã tạo — được sync lên DB, chia sẻ giữa mọi người dùng
   schedule: ScheduledSet[];
   // schedulerUIState: trạng thái UI cục bộ — chỉ lưu localStorage, không sync
@@ -30,6 +31,7 @@ interface AppState {
   error: string | null;
 
   // Actions
+  setSelectedWeek: (week: string) => void;
   fetchDataFromServer: () => Promise<void>;
   addPlayer: (name: string, gender?: 'male' | 'female') => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
@@ -93,6 +95,7 @@ export const useStore = create<AppState>()(
         matches: initialMatches,
         config: { minMatchesForMainBoard: 5 },
         theme: 'dark',
+        selectedWeek: 'all',
         schedule: [],
         schedulerUIState: undefined,
         schedulerState: undefined, // legacy compat
@@ -200,6 +203,7 @@ export const useStore = create<AppState>()(
           const nextTheme = get().theme === 'dark' ? 'light' : 'dark';
           set({ theme: nextTheme });
         },
+        setSelectedWeek: (selectedWeek) => set({ selectedWeek }),
 
         saveScheduleToDB: (newSchedule: ScheduledSet[]) => {
           set({ schedule: newSchedule });

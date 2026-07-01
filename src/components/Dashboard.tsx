@@ -8,8 +8,7 @@ import { Trophy, Medal, AlertCircle } from 'lucide-react';
 import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
 
 export default function Dashboard() {
-  const { players, matches, config } = useStore();
-  const [selectedWeek, setSelectedWeek] = useState<string>('all');
+  const { players, matches, config, selectedWeek, setSelectedWeek } = useStore();
 
   const weekOptions = useMemo(() => getWeekOptions(matches), [matches]);
 

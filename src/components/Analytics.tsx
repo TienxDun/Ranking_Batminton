@@ -118,8 +118,7 @@ const ActivityTooltip = ({ active, payload, theme }: any) => {
 };
 
 export default function Analytics({ active = true }: { active?: boolean }) {
-  const { players, matches, theme } = useStore();
-  const [selectedWeek, setSelectedWeek] = useState<string>('all');
+  const { players, matches, theme, selectedWeek, setSelectedWeek } = useStore();
 
   const weekOptions = useMemo(() => getWeekOptions(matches), [matches]);
 

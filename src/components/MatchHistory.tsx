@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { format, parseISO } from 'date-fns';
@@ -9,12 +9,36 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '.
 import { Select } from './ui/select';
 import { Input } from './ui/input';
 import { Match } from '../types';
+import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
 
 export default function MatchHistory() {
-  const { matches, players, deleteMatch, clearMatches, updateMatch } = useStore();
+  const { matches, players, deleteMatch, clearMatches, updateMatch, selectedWeek, setSelectedWeek } = useStore();
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [isConfirmingClearAll, setIsConfirmingClearAll] = useState(false);
+
+  const weekOptions = useMemo(() => getWeekOptions(matches), [matches]);
+
+  const filteredMatches = useMemo(() => {
+    let result = matches;
+
+    // 1. Lọc theo tuần
+    if (selectedWeek !== 'all') {
+      const weekInfo = weekOptions.find(w => w.id === selectedWeek);
+      if (weekInfo) {
+        result = result.filter(m => isMatchInWeek(m.date, weekInfo.start, weekInfo.end));
+      }
+    }
+
+    // 2. Lọc theo người chơi
+    if (selectedPlayerId !== 'all') {
+      result = result.filter(m => 
+        m.team1.includes(selectedPlayerId) || m.team2.includes(selectedPlayerId)
+      );
+    }
+
+    return result;
+  }, [matches, selectedWeek, selectedPlayerId, weekOptions]);
   
   // States cho tính năng chỉnh sửa
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
@@ -31,8 +55,8 @@ export default function MatchHistory() {
 
   const getPlayerName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
 
-  const totalPages = Math.ceil(matches.length / itemsPerPage);
-  const currentMatches = matches.slice((page - 1) * itemsPerPage, page * itemsPerPage);
+  const totalPages = Math.ceil(filteredMatches.length / itemsPerPage);
+  const currentMatches = filteredMatches.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   const handleDeleteClick = (id: string) => {
     setDeletingId(id);
@@ -43,7 +67,7 @@ export default function MatchHistory() {
       deleteMatch(deletingId);
       setDeletingId(null);
       // Adjust page if current page became empty
-      const remainingMatchesCount = matches.length - 1;
+      const remainingMatchesCount = filteredMatches.length - 1;
       const newTotalPages = Math.ceil(remainingMatchesCount / itemsPerPage);
       if (page > newTotalPages && page > 1) {
         setPage(newTotalPages);
@@ -103,19 +127,48 @@ export default function MatchHistory() {
   return (
     <div className="relative">
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-          <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white whitespace-nowrap">Lịch Sử Trận Đấu</CardTitle>
-          {matches.length > 0 && (
-            <Button
-              variant="destructive"
-              size="sm"
-              onClick={() => setIsConfirmingClearAll(true)}
-              className="text-xs font-bold flex items-center gap-1.5 h-8 px-3 bg-rose-500/10 border border-rose-500/20 text-rose-400 hover:bg-rose-500 hover:text-white transition-all duration-200"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Xóa tất cả</span>
-            </Button>
-          )}
+        <CardHeader className="pb-4 flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 border-b border-white/5 mb-4">
+          <div>
+            <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white whitespace-nowrap">Lịch Sử Trận Đấu</CardTitle>
+          </div>
+          <div className="flex flex-col sm:flex-row sm:flex-wrap items-center gap-3 w-full xl:w-auto justify-end">
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-1 sm:flex-none">
+              <span className="text-xs text-slate-400 whitespace-nowrap">Thời gian:</span>
+              <Select 
+                value={selectedWeek} 
+                onChange={e => {
+                  setSelectedWeek(e.target.value);
+                  setPage(1);
+                }} 
+                className="w-full sm:w-[200px] text-xs h-9 bg-slate-900 border-white/10 text-white rounded-lg"
+              >
+                <option value="all" className="bg-slate-900">Toàn thời gian</option>
+                {weekOptions.map(option => (
+                  <option key={option.id} value={option.id} className="bg-slate-900">
+                    {option.label}
+                  </option>
+                ))}
+              </Select>
+            </div>
+            <div className="flex items-center gap-2 w-full sm:w-auto flex-1 sm:flex-none">
+              <span className="text-xs text-slate-400 whitespace-nowrap">Người chơi:</span>
+              <Select 
+                value={selectedPlayerId} 
+                onChange={e => {
+                  setSelectedPlayerId(e.target.value);
+                  setPage(1);
+                }} 
+                className="w-full sm:w-[160px] text-xs h-9 bg-slate-900 border-white/10 text-white rounded-lg"
+              >
+                <option value="all" className="bg-slate-900">Tất cả</option>
+                {players.map(p => (
+                  <option key={p.id} value={p.id} className="bg-slate-900">
+                    {p.name}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           {/* Desktop Table View */}
@@ -173,9 +226,13 @@ export default function MatchHistory() {
                     </TableCell>
                   </TableRow>
                 ))}
-                {matches.length === 0 && (
+                {filteredMatches.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center text-slate-400 py-6">Chưa có trận đấu nào</TableCell>
+                    <TableCell colSpan={5} className="text-center text-slate-400 py-6">
+                      {selectedWeek === 'all' && selectedPlayerId === 'all' 
+                        ? 'Chưa có trận đấu nào' 
+                        : 'Không có trận đấu nào phù hợp với bộ lọc'}
+                    </TableCell>
                   </TableRow>
                 )}
               </TableBody>
@@ -255,8 +312,12 @@ export default function MatchHistory() {
                 </div>
               );
             })}
-            {matches.length === 0 && (
-              <div className="text-center text-slate-400 py-6 text-sm">Chưa có trận đấu nào</div>
+            {filteredMatches.length === 0 && (
+              <div className="text-center text-slate-400 py-6 text-sm">
+                {selectedWeek === 'all' && selectedPlayerId === 'all' 
+                  ? 'Chưa có trận đấu nào' 
+                  : 'Không có trận đấu nào phù hợp với bộ lọc'}
+              </div>
             )}
           </div>
 
@@ -305,47 +366,7 @@ export default function MatchHistory() {
         document.body
       )}
 
-      {/* Confirmation Modal for Clearing All Matches */}
-      {isConfirmingClearAll && createPortal(
-        <div className="fixed inset-0 bg-slate-950/60 backdrop-blur-md flex items-center justify-center z-50 p-4 transition-all duration-300">
-          <div className="glass max-w-sm w-full p-6 space-y-4 shadow-2xl relative border border-white/10 animate-in fade-in zoom-in-95 duration-150">
-            <button 
-              onClick={() => setIsConfirmingClearAll(false)}
-              className="absolute top-4 right-4 text-slate-400 hover:text-white transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-            
-            <div className="flex items-center gap-3 text-rose-400">
-              <div className="p-2 bg-rose-500/15 rounded-lg border border-rose-500/20">
-                <AlertTriangle className="w-5 h-5" />
-              </div>
-              <h3 className="font-bold text-lg text-white">Xóa toàn bộ lịch sử</h3>
-            </div>
 
-            <p className="text-sm text-slate-300 leading-relaxed">
-              Bạn có chắc chắn muốn xóa **tất cả** trận đấu trong lịch sử? Thao tác này không thể hoàn tác và bảng xếp hạng năng lực sẽ được reset về trạng thái ban đầu.
-            </p>
-
-            <div className="flex gap-2 justify-end pt-2">
-              <Button variant="ghost" onClick={() => setIsConfirmingClearAll(false)} className="text-slate-300 hover:text-white">
-                Hủy
-              </Button>
-              <Button 
-                variant="destructive" 
-                onClick={() => {
-                  clearMatches();
-                  setIsConfirmingClearAll(false);
-                  setPage(1);
-                }}
-              >
-                Xác nhận xóa hết
-              </Button>
-            </div>
-          </div>
-        </div>,
-        document.body
-      )}
 
       {/* Beautiful Glassmorphism Edit Match Modal */}
       {editingMatch && createPortal(

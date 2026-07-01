@@ -7,7 +7,6 @@ import React, { useState, useEffect } from 'react';
 import Dashboard from './components/Dashboard';
 import Analytics from './components/Analytics';
 import MatchForm from './components/MatchForm';
-import MatchScheduler from './components/MatchScheduler';
 import MatchHistory from './components/MatchHistory';
 import PlayerManagement from './components/PlayerManagement';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
@@ -15,7 +14,7 @@ import { Button } from './components/ui/button';
 import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings } from 'lucide-react';
 import { useStore } from './store';
 
-type Tab = 'dashboard' | 'analytics' | 'add' | 'schedule' | 'history' | 'players';
+type Tab = 'dashboard' | 'analytics' | 'add' | 'history' | 'players';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -34,18 +33,6 @@ export default function App() {
     // Fetch dữ liệu mới nhất từ server Express khi ứng dụng khởi chạy
     fetchDataFromServer();
   }, [fetchDataFromServer]);
-
-  // Refetch khi chuyển sang tab Xếp Lịch để luôn hiển thị lịch mới nhất từ DB
-  useEffect(() => {
-    if (activeTab === 'schedule') {
-      fetchDataFromServer();
-    }
-  }, [activeTab, fetchDataFromServer]);
-
-  const handleFillMatch = (matchData: { t1p1: string; t1p2: string; t2p1: string; t2p2: string }) => {
-    setPrefilledMatch(matchData);
-    setActiveTab('add');
-  };
 
   const renderDbStatus = () => {
     const isGoogleSheets = !!import.meta.env.VITE_GOOGLE_SCRIPT_URL;
@@ -156,17 +143,7 @@ export default function App() {
               <BarChart2 className={`w-3 h-3 lg:w-3.5 lg:h-3.5 transition-transform duration-300 ${activeTab === 'analytics' ? 'scale-110 text-teal-400' : ''}`} /> 
               <span>Thống Kê</span>
             </button>
-            <button 
-              onClick={() => setActiveTab('schedule')} 
-              className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
-                activeTab === 'schedule' 
-                  ? 'bg-gradient-to-r from-teal-500/20 to-indigo-500/10 text-teal-300 border border-teal-500/20 shadow-inner' 
-                  : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
-              }`}
-            >
-              <CalendarRange className={`w-3 h-3 lg:w-3.5 lg:h-3.5 transition-transform duration-300 ${activeTab === 'schedule' ? 'scale-110 text-teal-400' : ''}`} /> 
-              <span>Xếp Lịch</span>
-            </button>
+
             <button 
               onClick={() => setActiveTab('add')} 
               className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
@@ -234,9 +211,7 @@ export default function App() {
         <div className={activeTab === 'analytics' ? 'tab-content-active' : 'hidden'}>
           <Analytics active={activeTab === 'analytics'} />
         </div>
-        <div className={activeTab === 'schedule' ? 'tab-content-active' : 'hidden'}>
-          <MatchScheduler onFillMatch={handleFillMatch} />
-        </div>
+
         <div className={activeTab === 'add' ? 'tab-content-active' : 'hidden'}>
           <MatchForm 
             onSaved={() => {
@@ -274,15 +249,7 @@ export default function App() {
           <BarChart2 className="w-4.5 h-4.5 mb-1" />
           <span className="text-[10px] font-semibold">Thống Kê</span>
         </button>
-        <button 
-          onClick={() => setActiveTab('schedule')} 
-          className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${
-            activeTab === 'schedule' ? 'text-teal-400 scale-105' : 'text-slate-400'
-          }`}
-        >
-          <CalendarRange className="w-4.5 h-4.5 mb-1" />
-          <span className="text-[10px] font-semibold">Xếp Lịch</span>
-        </button>
+
         <button 
           onClick={() => setActiveTab('add')} 
           className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${

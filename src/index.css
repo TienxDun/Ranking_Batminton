@@ -37,6 +37,27 @@ body {
   color: var(--text-color);
   min-height: 100vh;
   transition: background-color 0.3s ease, color 0.3s ease;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  font-feature-settings: "cv11" 1;
+}
+
+button, input, select, textarea, option {
+  font-feature-settings: "cv11" 1;
+}
+
+/* Căn giữa chữ trong ô nhập ngày giờ ở mobile (đặc biệt là iOS) */
+input[type="datetime-local"],
+input[type="date"],
+input[type="time"] {
+  text-align: center;
+}
+
+input[type="datetime-local"]::-webkit-date-and-time-value,
+input[type="date"]::-webkit-date-and-time-value,
+input[type="time"]::-webkit-date-and-time-value {
+  text-align: center;
+  min-height: 1.25em;
 }
 
 .mesh-bg {

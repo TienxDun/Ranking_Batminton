@@ -24,7 +24,7 @@ export function getWeekOptions(matches: Match[]): WeekOption[] {
   
   weeksMap.set(currentId, {
     id: currentId,
-    label: `Tuần ${currentWeekNum} (${format(currentStart, 'dd/MM/yyyy')} - ${format(currentEnd, 'dd/MM/yyyy')}) (Tuần này)`,
+    label: `Tuần ${currentWeekNum} (Tuần này)`,
     start: currentStart,
     end: currentEnd
   });
@@ -41,7 +41,7 @@ export function getWeekOptions(matches: Match[]): WeekOption[] {
       if (!weeksMap.has(id)) {
         weeksMap.set(id, {
           id,
-          label: `Tuần ${weekNum} (${format(start, 'dd/MM/yyyy')} - ${format(end, 'dd/MM/yyyy')})`,
+          label: `Tuần ${weekNum}`,
           start,
           end
         });
