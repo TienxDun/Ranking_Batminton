@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { format, parseISO } from 'date-fns';
 import { useStore } from '../store';
+import paymentQrImage from '../../assets/QR.jpg';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
@@ -19,7 +20,6 @@ import {
   ExternalLink,
   Plus,
   QrCode,
-  ImagePlus,
 } from 'lucide-react';
 import { CostLineItem, SessionCost, SessionCostBreakdown } from '../types';
 import {
@@ -37,11 +37,6 @@ import {
   parseQuantityInput,
   splitCostEqually,
 } from '../utils/costUtils';
-import {
-  encodeImageToBase64,
-  toImageSrc,
-  validateImageFile,
-} from '../utils/imageUtils';
 
 function todayKey(): string {
   return format(new Date(), 'yyyy-MM-dd');
@@ -55,23 +50,17 @@ function formatSessionDate(date: string): string {
   }
 }
 
-const MAX_QR_SIZE_BYTES = 512 * 1024;
-
 function PaymentQrPanel({
-  qrImage,
   highlightAmount,
 }: {
-  qrImage?: string;
   highlightAmount?: number;
 }) {
-  const qrSrc = qrImage ? toImageSrc(qrImage) : undefined;
   const handleDownload = () => {
-    if (!qrSrc) return;
     const confirmed = window.confirm('Tải ảnh QR này về máy?');
     if (!confirmed) return;
 
     const link = document.createElement('a');
-    link.href = qrSrc;
+    link.href = paymentQrImage;
     link.download = 'ma-qr-nhan-tien.png';
     document.body.appendChild(link);
     link.click();
@@ -95,21 +84,13 @@ function PaymentQrPanel({
             <button
               type="button"
               onClick={handleDownload}
-              disabled={!qrSrc}
-              className="w-36 h-36 sm:w-40 sm:h-40 rounded-xl bg-white p-2 border-2 border-white/20 shadow-lg flex items-center justify-center disabled:cursor-default cursor-pointer transition-transform hover:scale-[1.01]"
+              className="w-36 h-36 sm:w-40 sm:h-40 rounded-xl bg-white p-2 border-2 border-white/20 shadow-lg flex items-center justify-center cursor-pointer transition-transform hover:scale-[1.01]"
             >
-              {qrSrc ? (
-                <img
-                  src={qrSrc}
-                  alt="Mã QR nhận tiền"
-                  className="w-full h-full object-contain"
-                />
-              ) : (
-                <div className="flex flex-col items-center gap-2 text-slate-400 px-2 text-center">
-                  <QrCode className="w-10 h-10 opacity-40" />
-                  <span className="text-[10px] leading-tight">Chưa có mã QR</span>
-                </div>
-              )}
+              <img
+                src={paymentQrImage}
+                alt="Mã QR nhận tiền"
+                className="w-full h-full object-contain"
+              />
             </button>
           </div>
           {highlightAmount !== undefined && highlightAmount > 0 && (
@@ -120,99 +101,6 @@ function PaymentQrPanel({
         </div>
       </CardContent>
     </Card>
-  );
-}
-
-function PaymentQrManager({
-  qrImage,
-  accountName,
-  onUpload,
-  onRemove,
-  onAccountNameChange,
-  onError,
-}: {
-  qrImage?: string;
-  accountName?: string;
-  onUpload: (dataUrl: string) => void;
-  onRemove: () => void;
-  onAccountNameChange: (name: string) => void;
-  onError: (msg: string) => void;
-}) {
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [isEncoding, setIsEncoding] = useState(false);
-
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const validationError = validateImageFile(file, MAX_QR_SIZE_BYTES);
-    if (validationError) {
-      onError(validationError);
-      e.target.value = '';
-      return;
-    }
-
-    setIsEncoding(true);
-    try {
-      const base64DataUrl = await encodeImageToBase64(file, { maxDimension: 512, quality: 0.85 });
-      onUpload(base64DataUrl);
-    } catch {
-      onError('Không thể mã hóa ảnh QR. Vui lòng thử ảnh khác.');
-    } finally {
-      setIsEncoding(false);
-      e.target.value = '';
-    }
-  };
-
-  return (
-    <div className="space-y-3 rounded-xl border border-white/8 bg-white/5 p-4">
-      <div className="space-y-1">
-        <p className="text-sm font-medium text-slate-200">QR nhận tiền</p>
-        <p className="text-xs text-slate-400">
-          Quản lý ảnh QR và tên người nhận. Sau khi lưu, người dùng chỉ cần bấm trực tiếp vào ảnh để tải về máy.
-        </p>
-      </div>
-
-      <Input
-        placeholder="Tên tài khoản / người nhận (tùy chọn)"
-        value={accountName || ''}
-        onChange={e => onAccountNameChange(e.target.value)}
-        className="h-10 text-sm"
-      />
-
-      <div className="flex flex-wrap items-center gap-2">
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept="image/*"
-          aria-label="Tải ảnh mã QR nhận tiền"
-          className="hidden"
-          onChange={handleFile}
-        />
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          disabled={isEncoding}
-          onClick={() => fileInputRef.current?.click()}
-          className="border border-white/10 text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 cursor-pointer disabled:opacity-50"
-        >
-          <ImagePlus className="w-4 h-4 mr-1.5" />
-          {isEncoding ? 'Đang mã hóa...' : qrImage ? 'Đổi ảnh QR' : 'Tải ảnh QR lên'}
-        </Button>
-        {qrImage && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="sm"
-            onClick={onRemove}
-            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer"
-          >
-            Xóa QR
-          </Button>
-        )}
-      </div>
-    </div>
   );
 }
 
@@ -483,7 +371,6 @@ export default function SessionCosts() {
       )}
 
       <PaymentQrPanel
-        qrImage={config.paymentQrImage}
         highlightAmount={showForm && perPerson > 0 ? perPerson : undefined}
       />
 
@@ -511,24 +398,9 @@ export default function SessionCosts() {
               <MapPin className="w-4 h-4 text-teal-400" />
               QUẢN LÝ CHUNG
             </CardTitle>
-            <CardDescription>Quản lý sân đánh và ảnh QR nhận tiền hiển thị trong màn hình chi phí</CardDescription>
+            <CardDescription>Thêm sân bằng URL Google Maps để chọn khi ghi chi phí</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <PaymentQrManager
-              qrImage={config.paymentQrImage}
-              accountName={config.paymentAccountName}
-              onUpload={dataUrl => {
-                setConfig({ paymentQrImage: dataUrl });
-                showNotification('success', 'Đã cập nhật mã QR nhận tiền.');
-              }}
-              onRemove={() => {
-                setConfig({ paymentQrImage: undefined });
-                showNotification('success', 'Đã xóa mã QR.');
-              }}
-              onAccountNameChange={name => setConfig({ paymentAccountName: name.trim() || undefined })}
-              onError={msg => showNotification('error', msg)}
-            />
-
             <form onSubmit={handleAddCourt} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
@@ -754,12 +626,12 @@ export default function SessionCosts() {
                   </div>
                 </div>
 
-                {config.paymentQrImage && perPerson > 0 && (
+                {perPerson > 0 && (
                   <div className="flex flex-col items-center justify-center gap-1 lg:w-44 flex-shrink-0 p-3 bg-white/5 border border-teal-500/20 rounded-xl">
                     <p className="text-[10px] text-slate-400 whitespace-nowrap">Quét để chuyển</p>
                     <div className="w-28 h-28 rounded-lg bg-white p-1.5">
                       <img
-                        src={toImageSrc(config.paymentQrImage)}
+                        src={paymentQrImage}
                         alt="QR nhận tiền"
                         className="w-full h-full object-contain"
                       />
