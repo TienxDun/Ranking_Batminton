@@ -31,8 +31,16 @@ export default function App() {
   }, [theme]);
 
   useEffect(() => {
-    // Fetch dữ liệu mới nhất từ server Express khi ứng dụng khởi chạy
-    fetchDataFromServer();
+    const fetchWhenReady = () => fetchDataFromServer();
+
+    if (useStore.persist.hasHydrated()) {
+      fetchWhenReady();
+      return;
+    }
+
+    return useStore.persist.onFinishHydration(() => {
+      fetchWhenReady();
+    });
   }, [fetchDataFromServer]);
 
   const renderDbStatus = () => {

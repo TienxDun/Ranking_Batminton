@@ -30,6 +30,9 @@ export type PlayerStats = {
 
 export type LeaderboardConfig = {
   minMatchesForMainBoard: number;
+  /** Ảnh QR nhận tiền — lưu dạng base64 data URL (data:image/...;base64,...) */
+  paymentQrImage?: string;
+  paymentAccountName?: string;
 };
 
 export type ScheduledSet = {

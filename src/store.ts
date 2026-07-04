@@ -7,6 +7,45 @@ import { initialPlayers, initialMatches } from './data/seed';
 
 const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
 
+/** Gộp config từ server với local — giữ ảnh QR base64 nếu server không có */
+function mergeConfigFromServer(
+  local: LeaderboardConfig,
+  server?: Partial<LeaderboardConfig> | null
+): LeaderboardConfig {
+  const remote = server ?? {};
+  return {
+    minMatchesForMainBoard:
+      remote.minMatchesForMainBoard ?? local.minMatchesForMainBoard ?? 5,
+    paymentAccountName: remote.paymentAccountName ?? local.paymentAccountName,
+    // Ảnh QR base64 lưu localStorage — không sync lên server (quá lớn)
+    paymentQrImage: remote.paymentQrImage ?? local.paymentQrImage,
+  };
+}
+
+/** Config gửi lên server — bỏ ảnh base64 */
+function configForRemoteSync(config: LeaderboardConfig): LeaderboardConfig {
+  const { paymentQrImage: _, ...rest } = config;
+  return rest;
+}
+
+function mergeById<T extends { id: string }>(local: T[], remote?: T[] | null): T[] {
+  if (!remote || remote.length === 0) return local;
+  if (local.length === 0) return remote;
+  const remoteIds = new Set(remote.map(item => item.id));
+  return [...remote, ...local.filter(item => !remoteIds.has(item.id))];
+}
+
+function mergeSessionCostsFromServer(
+  local: SessionCost[],
+  remote?: SessionCost[] | null
+): SessionCost[] {
+  const merged = mergeById(local, remote);
+  return merged.map(s => ({
+    ...s,
+    costs: normalizeCostBreakdown(s.costs),
+  }));
+}
+
 interface AppState {
   players: Player[];
   matches: Match[];
@@ -68,6 +107,7 @@ export const useStore = create<AppState>()(
         const players = updatedFields.players ?? get().players;
         const matches = updatedFields.matches ?? get().matches;
         const config = updatedFields.config ?? get().config;
+        const configRemote = configForRemoteSync(config);
         // Chỉ sync `schedule` (lịch thi đấu đã tạo) lên DB — schedulerUIState là local only
         const schedule = updatedFields.schedule !== undefined ? updatedFields.schedule : get().schedule;
         const sessionCosts = updatedFields.sessionCosts !== undefined ? updatedFields.sessionCosts : get().sessionCosts;
@@ -84,13 +124,13 @@ export const useStore = create<AppState>()(
             await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify({ players, matches, config, schedule, sessionCosts, courts }),
+              body: JSON.stringify({ players, matches, config: configRemote, schedule, sessionCosts, courts }),
             });
           } else {
             const response = await fetch('/api/data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ players, matches, config, schedule, sessionCosts, courts }),
+              body: JSON.stringify({ players, matches, config: configRemote, schedule, sessionCosts, courts }),
             });
             if (!response.ok) {
               console.error('Lỗi phản hồi từ API Express');
@@ -128,16 +168,36 @@ export const useStore = create<AppState>()(
             const response = await fetch(url);
             if (response.ok) {
               const data = await response.json();
+              const localConfig = get().config;
+              const localSessionCosts = get().sessionCosts;
+              const localCourts = get().courts;
+              const mergedSessionCosts = mergeSessionCostsFromServer(
+                localSessionCosts,
+                data.sessionCosts
+              );
+              const mergedCourts = mergeById(localCourts, data.courts);
+
               set({
                 players: data.players || [],
                 matches: data.matches || [],
-                config: data.config || { minMatchesForMainBoard: 5 },
-                // Ưu tiên `schedule` mới, fallback về schedulerState.schedule cũ nếu DB cũ
+                config: mergeConfigFromServer(localConfig, data.config),
                 schedule: data.schedule || data.schedulerState?.schedule || [],
-                sessionCosts: data.sessionCosts || [],
-                courts: data.courts || [],
-                isLoading: false
+                sessionCosts: mergedSessionCosts,
+                courts: mergedCourts,
+                isLoading: false,
               });
+
+              // Server cũ chưa có sessionCosts/courts — đẩy dữ liệu local lên
+              const serverMissingCosts =
+                !Array.isArray(data.sessionCosts) || data.sessionCosts.length === 0;
+              const serverMissingCourts =
+                !Array.isArray(data.courts) || data.courts.length === 0;
+              if (
+                (serverMissingCosts && mergedSessionCosts.length > 0) ||
+                (serverMissingCourts && mergedCourts.length > 0)
+              ) {
+                sync({ sessionCosts: mergedSessionCosts, courts: mergedCourts });
+              }
             } else {
               set({ error: isGitHubPages ? null : 'Không thể tải dữ liệu từ server', isLoading: false });
             }
@@ -191,10 +251,15 @@ export const useStore = create<AppState>()(
           try {
             const data = JSON.parse(jsonData);
             if (data.players && data.matches && data.config) {
-              const sessionCosts = data.sessionCosts || [];
-              const courts = data.courts || [];
-              set({ players: data.players, matches: data.matches, config: data.config, sessionCosts, courts });
-              sync({ players: data.players, matches: data.matches, config: data.config, sessionCosts, courts });
+              const localConfig = get().config;
+              const sessionCosts = mergeSessionCostsFromServer(
+                get().sessionCosts,
+                data.sessionCosts
+              );
+              const courts = mergeById(get().courts, data.courts);
+              const config = mergeConfigFromServer(localConfig, data.config);
+              set({ players: data.players, matches: data.matches, config, sessionCosts, courts });
+              sync({ players: data.players, matches: data.matches, config, sessionCosts, courts });
               return true;
             }
             return false;

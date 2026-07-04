@@ -18,6 +18,8 @@ import {
   MapPin,
   ExternalLink,
   Plus,
+  QrCode,
+  ImagePlus,
 } from 'lucide-react';
 import { CostLineItem, SessionCost, SessionCostBreakdown } from '../types';
 import {
@@ -35,6 +37,11 @@ import {
   parseQuantityInput,
   splitCostEqually,
 } from '../utils/costUtils';
+import {
+  encodeImageToBase64,
+  toImageSrc,
+  validateImageFile,
+} from '../utils/imageUtils';
 
 function todayKey(): string {
   return format(new Date(), 'yyyy-MM-dd');
@@ -48,6 +55,167 @@ function formatSessionDate(date: string): string {
   }
 }
 
+const MAX_QR_SIZE_BYTES = 512 * 1024;
+
+function PaymentQrPanel({
+  qrImage,
+  highlightAmount,
+}: {
+  qrImage?: string;
+  highlightAmount?: number;
+}) {
+  const qrSrc = qrImage ? toImageSrc(qrImage) : undefined;
+  const handleDownload = () => {
+    if (!qrSrc) return;
+    const confirmed = window.confirm('Tải ảnh QR này về máy?');
+    if (!confirmed) return;
+
+    const link = document.createElement('a');
+    link.href = qrSrc;
+    link.download = 'ma-qr-nhan-tien.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  return (
+    <Card className="border-teal-500/15 bg-gradient-to-br from-teal-500/5 to-transparent">
+      <CardHeader className="pb-3 text-center sm:text-left">
+        <CardTitle className="text-sm sm:text-base font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+          <QrCode className="w-4 h-4 text-teal-400" />
+          MÃ QR NHẬN TIỀN
+        </CardTitle>
+        <CardDescription>
+          Quét mã để chuyển khoản
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <div className="flex flex-col items-center gap-4">
+          <div className="flex-shrink-0">
+            <button
+              type="button"
+              onClick={handleDownload}
+              disabled={!qrSrc}
+              className="w-36 h-36 sm:w-40 sm:h-40 rounded-xl bg-white p-2 border-2 border-white/20 shadow-lg flex items-center justify-center disabled:cursor-default cursor-pointer transition-transform hover:scale-[1.01]"
+            >
+              {qrSrc ? (
+                <img
+                  src={qrSrc}
+                  alt="Mã QR nhận tiền"
+                  className="w-full h-full object-contain"
+                />
+              ) : (
+                <div className="flex flex-col items-center gap-2 text-slate-400 px-2 text-center">
+                  <QrCode className="w-10 h-10 opacity-40" />
+                  <span className="text-[10px] leading-tight">Chưa có mã QR</span>
+                </div>
+              )}
+            </button>
+          </div>
+          {highlightAmount !== undefined && highlightAmount > 0 && (
+            <p className="text-center text-sm font-bold text-teal-400 whitespace-nowrap tabular-nums">
+              {formatVND(highlightAmount)}
+            </p>
+          )}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PaymentQrManager({
+  qrImage,
+  accountName,
+  onUpload,
+  onRemove,
+  onAccountNameChange,
+  onError,
+}: {
+  qrImage?: string;
+  accountName?: string;
+  onUpload: (dataUrl: string) => void;
+  onRemove: () => void;
+  onAccountNameChange: (name: string) => void;
+  onError: (msg: string) => void;
+}) {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [isEncoding, setIsEncoding] = useState(false);
+
+  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const validationError = validateImageFile(file, MAX_QR_SIZE_BYTES);
+    if (validationError) {
+      onError(validationError);
+      e.target.value = '';
+      return;
+    }
+
+    setIsEncoding(true);
+    try {
+      const base64DataUrl = await encodeImageToBase64(file, { maxDimension: 512, quality: 0.85 });
+      onUpload(base64DataUrl);
+    } catch {
+      onError('Không thể mã hóa ảnh QR. Vui lòng thử ảnh khác.');
+    } finally {
+      setIsEncoding(false);
+      e.target.value = '';
+    }
+  };
+
+  return (
+    <div className="space-y-3 rounded-xl border border-white/8 bg-white/5 p-4">
+      <div className="space-y-1">
+        <p className="text-sm font-medium text-slate-200">QR nhận tiền</p>
+        <p className="text-xs text-slate-400">
+          Quản lý ảnh QR và tên người nhận. Sau khi lưu, người dùng chỉ cần bấm trực tiếp vào ảnh để tải về máy.
+        </p>
+      </div>
+
+      <Input
+        placeholder="Tên tài khoản / người nhận (tùy chọn)"
+        value={accountName || ''}
+        onChange={e => onAccountNameChange(e.target.value)}
+        className="h-10 text-sm"
+      />
+
+      <div className="flex flex-wrap items-center gap-2">
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          aria-label="Tải ảnh mã QR nhận tiền"
+          className="hidden"
+          onChange={handleFile}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          disabled={isEncoding}
+          onClick={() => fileInputRef.current?.click()}
+          className="border border-white/10 text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 cursor-pointer disabled:opacity-50"
+        >
+          <ImagePlus className="w-4 h-4 mr-1.5" />
+          {isEncoding ? 'Đang mã hóa...' : qrImage ? 'Đổi ảnh QR' : 'Tải ảnh QR lên'}
+        </Button>
+        {qrImage && (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onRemove}
+            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer"
+          >
+            Xóa QR
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 function CostLineRow({
   label,
   unitLabel,
@@ -55,6 +223,7 @@ function CostLineRow({
   unitPricePlaceholder,
   onChange,
 }: {
+  key?: React.Key;
   label: string;
   unitLabel: string;
   item: CostLineItem;
@@ -114,6 +283,8 @@ export default function SessionCosts() {
     deleteSessionCost,
     addCourt,
     deleteCourt,
+    config,
+    setConfig,
   } = useStore();
 
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -311,6 +482,11 @@ export default function SessionCosts() {
         </div>
       )}
 
+      <PaymentQrPanel
+        qrImage={config.paymentQrImage}
+        highlightAmount={showForm && perPerson > 0 ? perPerson : undefined}
+      />
+
       {!showForm && (
         <div className="flex flex-col sm:flex-row justify-end gap-2">
           <Button
@@ -319,7 +495,7 @@ export default function SessionCosts() {
             className="text-slate-300 hover:text-white border border-white/10 cursor-pointer"
           >
             <MapPin className="w-4 h-4 mr-2" />
-            {showCourtManager ? 'Ẩn quản lý sân' : 'Quản lý sân'}
+            {showCourtManager ? 'Ẩn quản lý chung' : 'Quản lý chung'}
           </Button>
           <Button onClick={openNewForm} className="bg-teal-500 hover:bg-teal-600 text-white-force font-bold cursor-pointer">
             <Wallet className="w-4 h-4 mr-2" />
@@ -333,11 +509,26 @@ export default function SessionCosts() {
           <CardHeader className="text-center sm:text-left">
             <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white flex items-center gap-2">
               <MapPin className="w-4 h-4 text-teal-400" />
-              QUẢN LÝ SÂN ĐÁNH
+              QUẢN LÝ CHUNG
             </CardTitle>
-            <CardDescription>Thêm sân bằng URL Google Maps để chọn khi ghi chi phí</CardDescription>
+            <CardDescription>Quản lý sân đánh và ảnh QR nhận tiền hiển thị trong màn hình chi phí</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
+            <PaymentQrManager
+              qrImage={config.paymentQrImage}
+              accountName={config.paymentAccountName}
+              onUpload={dataUrl => {
+                setConfig({ paymentQrImage: dataUrl });
+                showNotification('success', 'Đã cập nhật mã QR nhận tiền.');
+              }}
+              onRemove={() => {
+                setConfig({ paymentQrImage: undefined });
+                showNotification('success', 'Đã xóa mã QR.');
+              }}
+              onAccountNameChange={name => setConfig({ paymentAccountName: name.trim() || undefined })}
+              onError={msg => showNotification('error', msg)}
+            />
+
             <form onSubmit={handleAddCourt} className="space-y-3">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Input
@@ -458,7 +649,7 @@ export default function SessionCosts() {
                   </Select>
                   {courts.length === 0 && (
                     <p className="text-xs text-slate-400">
-                      Chưa có sân. Mở &quot;Quản lý sân&quot; để thêm bằng URL Google Maps.
+                      Chưa có sân. Mở &quot;Quản lý chung&quot; để thêm bằng URL Google Maps.
                     </p>
                   )}
                   {selectedCourt && (
@@ -547,19 +738,38 @@ export default function SessionCosts() {
                 )}
               </div>
 
-              <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3 sm:p-4 bg-gradient-to-r from-teal-500/10 to-indigo-500/5 border border-teal-500/20 rounded-xl">
-                <div className="text-center sm:text-left min-w-0">
-                  <p className="text-[10px] sm:text-xs text-slate-400 mb-1 whitespace-nowrap">Tổng chi phí</p>
-                  <p className="text-sm sm:text-lg font-bold text-white whitespace-nowrap tabular-nums">{formatVND(totalCost)}</p>
+              <div className="flex flex-col lg:flex-row gap-4">
+                <div className="grid grid-cols-3 gap-2 sm:gap-3 p-3 sm:p-4 bg-gradient-to-r from-teal-500/10 to-indigo-500/5 border border-teal-500/20 rounded-xl flex-1">
+                  <div className="text-center sm:text-left min-w-0">
+                    <p className="text-[10px] sm:text-xs text-slate-400 mb-1 whitespace-nowrap">Tổng chi phí</p>
+                    <p className="text-sm sm:text-lg font-bold text-white whitespace-nowrap tabular-nums">{formatVND(totalCost)}</p>
+                  </div>
+                  <div className="text-center sm:text-left min-w-0">
+                    <p className="text-[10px] sm:text-xs text-slate-400 mb-1 whitespace-nowrap">Số người</p>
+                    <p className="text-sm sm:text-lg font-bold text-white tabular-nums">{participantIds.length}</p>
+                  </div>
+                  <div className="text-center sm:text-left min-w-0">
+                    <p className="text-[10px] sm:text-xs text-slate-400 mb-1 whitespace-nowrap">Mỗi người</p>
+                    <p className="text-sm sm:text-lg font-bold text-teal-400 whitespace-nowrap tabular-nums">{formatVND(perPerson)}</p>
+                  </div>
                 </div>
-                <div className="text-center sm:text-left min-w-0">
-                  <p className="text-[10px] sm:text-xs text-slate-400 mb-1 whitespace-nowrap">Số người</p>
-                  <p className="text-sm sm:text-lg font-bold text-white tabular-nums">{participantIds.length}</p>
-                </div>
-                <div className="text-center sm:text-left min-w-0">
-                  <p className="text-[10px] sm:text-xs text-slate-400 mb-1 whitespace-nowrap">Mỗi người</p>
-                  <p className="text-sm sm:text-lg font-bold text-teal-400 whitespace-nowrap tabular-nums">{formatVND(perPerson)}</p>
-                </div>
+
+                {config.paymentQrImage && perPerson > 0 && (
+                  <div className="flex flex-col items-center justify-center gap-1 lg:w-44 flex-shrink-0 p-3 bg-white/5 border border-teal-500/20 rounded-xl">
+                    <p className="text-[10px] text-slate-400 whitespace-nowrap">Quét để chuyển</p>
+                    <div className="w-28 h-28 rounded-lg bg-white p-1.5">
+                      <img
+                        src={toImageSrc(config.paymentQrImage)}
+                        alt="QR nhận tiền"
+                        className="w-full h-full object-contain"
+                      />
+                    </div>
+                    <p className="text-sm font-bold text-teal-400 tabular-nums whitespace-nowrap">{formatVND(perPerson)}</p>
+                    {config.paymentAccountName && (
+                      <p className="text-[10px] text-slate-400 truncate max-w-full">{config.paymentAccountName}</p>
+                    )}
+                  </div>
+                )}
               </div>
 
               {participantIds.length > 0 && totalCost > 0 && (
