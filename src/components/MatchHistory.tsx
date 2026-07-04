@@ -12,6 +12,7 @@ import { Match, Player } from '../types';
 import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
 import { requireAdminPassword } from '../utils/adminAuth';
 import { calculatePlayerEloBreakdown } from '../utils/calculations';
+import { useModalHistory } from '../hooks/useModalHistory';
 
 function formatMatchDateTime(date: string) {
   const parsed = parseISO(date);
@@ -35,6 +36,8 @@ export function MatchDetailModal({
   getPlayerName: (id: string) => string;
   onClose: () => void;
 }) {
+  useModalHistory(onClose);
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';

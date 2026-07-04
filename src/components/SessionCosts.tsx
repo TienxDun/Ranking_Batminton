@@ -43,6 +43,7 @@ import {
   splitCostEqually,
 } from '../utils/costUtils';
 import { requireAdminPassword } from '../utils/adminAuth';
+import { useModalHistory } from '../hooks/useModalHistory';
 
 function todayKey(): string {
   return format(new Date(), 'yyyy-MM-dd');
@@ -77,6 +78,7 @@ function PaymentQrPreview({
   accountName?: string;
   onClose: () => void;
 }) {
+  useModalHistory(onClose);
   return createPortal(
     <div
       className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
@@ -268,6 +270,7 @@ function SessionCostDetailModal({
   onClose: () => void;
 }) {
   const { courts } = useStore();
+  useModalHistory(onClose);
   const court = courts.find(c => c.id === session.courtId);
 
   useEffect(() => {

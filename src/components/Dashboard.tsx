@@ -11,6 +11,7 @@ import { Button } from './ui/button';
 import { Match, Player, PlayerStats } from '../types';
 import { useVisualViewportRect } from '../hooks/useVisualViewportRect';
 import { MatchDetailModal } from './MatchHistory';
+import { useModalHistory } from '../hooks/useModalHistory';
 
 function formatMatchDate(date: string): string {
   try {
@@ -84,6 +85,8 @@ function PlayerDetailModal({
   const viewportRect = useVisualViewportRect();
   const isMobileViewport = viewportRect.width < 640;
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
+
+  useModalHistory(onClose);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;

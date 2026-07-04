@@ -23,6 +23,7 @@ import { parseISO } from 'date-fns';
 import { Button } from './ui/button';
 import { Match } from '../types';
 import { useVisualViewportRect } from '../hooks/useVisualViewportRect';
+import { useModalHistory } from '../hooks/useModalHistory';
 
 const PLAYER_COLORS: Record<string, string> = {
   'Khoa': '#2dd4bf',   // Teal
@@ -260,6 +261,8 @@ function InsightDetailModal({
 }) {
   const viewportRect = useVisualViewportRect();
   const isMobileViewport = viewportRect.width < 640;
+
+  useModalHistory(onClose);
 
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
