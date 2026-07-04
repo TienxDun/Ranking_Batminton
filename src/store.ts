@@ -1,7 +1,8 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Match, Player, LeaderboardConfig, ScheduledSet } from './types';
+import { Match, Player, LeaderboardConfig, ScheduledSet, SessionCost, Court } from './types';
+import { normalizeCostBreakdown } from './utils/costUtils';
 import { initialPlayers, initialMatches } from './data/seed';
 
 const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
@@ -14,6 +15,8 @@ interface AppState {
   selectedWeek: string;
   // schedule: lịch thi đấu đã tạo — được sync lên DB, chia sẻ giữa mọi người dùng
   schedule: ScheduledSet[];
+  sessionCosts: SessionCost[];
+  courts: Court[];
   // schedulerUIState: trạng thái UI cục bộ — chỉ lưu localStorage, không sync
   schedulerUIState?: {
     selectedIds: string[];
@@ -49,6 +52,12 @@ interface AppState {
   setSchedulerUIState: (state: AppState['schedulerUIState']) => void;
   /** @deprecated dùng saveScheduleToDB + setSchedulerUIState thay thế */
   setSchedulerState: (state: AppState['schedulerState']) => void;
+  addSessionCost: (session: Omit<SessionCost, 'id'>) => void;
+  updateSessionCost: (id: string, updates: Partial<Omit<SessionCost, 'id'>>) => void;
+  deleteSessionCost: (id: string) => void;
+  addCourt: (name: string, mapUrl: string) => void;
+  updateCourt: (id: string, updates: Partial<Omit<Court, 'id'>>) => void;
+  deleteCourt: (id: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -61,6 +70,8 @@ export const useStore = create<AppState>()(
         const config = updatedFields.config ?? get().config;
         // Chỉ sync `schedule` (lịch thi đấu đã tạo) lên DB — schedulerUIState là local only
         const schedule = updatedFields.schedule !== undefined ? updatedFields.schedule : get().schedule;
+        const sessionCosts = updatedFields.sessionCosts !== undefined ? updatedFields.sessionCosts : get().sessionCosts;
+        const courts = updatedFields.courts !== undefined ? updatedFields.courts : get().courts;
 
         // Nếu chạy trên GitHub Pages tĩnh và không có link Google Sheets, chỉ lưu local
         const isGitHubPages = window.location.hostname.endsWith('github.io');
@@ -73,13 +84,13 @@ export const useStore = create<AppState>()(
             await fetch(GOOGLE_SCRIPT_URL, {
               method: 'POST',
               headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify({ players, matches, config, schedule }),
+              body: JSON.stringify({ players, matches, config, schedule, sessionCosts, courts }),
             });
           } else {
             const response = await fetch('/api/data', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ players, matches, config, schedule }),
+              body: JSON.stringify({ players, matches, config, schedule, sessionCosts, courts }),
             });
             if (!response.ok) {
               console.error('Lỗi phản hồi từ API Express');
@@ -97,6 +108,8 @@ export const useStore = create<AppState>()(
         theme: 'dark',
         selectedWeek: 'all',
         schedule: [],
+        sessionCosts: [],
+        courts: [],
         schedulerUIState: undefined,
         schedulerState: undefined, // legacy compat
         isLoading: false,
@@ -121,6 +134,8 @@ export const useStore = create<AppState>()(
                 config: data.config || { minMatchesForMainBoard: 5 },
                 // Ưu tiên `schedule` mới, fallback về schedulerState.schedule cũ nếu DB cũ
                 schedule: data.schedule || data.schedulerState?.schedule || [],
+                sessionCosts: data.sessionCosts || [],
+                courts: data.courts || [],
                 isLoading: false
               });
             } else {
@@ -176,8 +191,10 @@ export const useStore = create<AppState>()(
           try {
             const data = JSON.parse(jsonData);
             if (data.players && data.matches && data.config) {
-              set({ players: data.players, matches: data.matches, config: data.config });
-              sync({ players: data.players, matches: data.matches, config: data.config });
+              const sessionCosts = data.sessionCosts || [];
+              const courts = data.courts || [];
+              set({ players: data.players, matches: data.matches, config: data.config, sessionCosts, courts });
+              sync({ players: data.players, matches: data.matches, config: data.config, sessionCosts, courts });
               return true;
             }
             return false;
@@ -193,6 +210,8 @@ export const useStore = create<AppState>()(
             matches: initialMatches,
             config: { minMatchesForMainBoard: 5 },
             schedule: [] as ScheduledSet[],
+            sessionCosts: [] as SessionCost[],
+            courts: [] as Court[],
             schedulerState: undefined
           };
           set(resetFields);
@@ -220,6 +239,44 @@ export const useStore = create<AppState>()(
           set({ schedulerState });
           // Không sync lên DB nữa — dùng saveScheduleToDB thay thế
         },
+
+        addSessionCost: (session) => {
+          const newSessionCosts = [{ ...session, id: uuidv4() }, ...get().sessionCosts];
+          set({ sessionCosts: newSessionCosts });
+          sync({ sessionCosts: newSessionCosts });
+        },
+
+        updateSessionCost: (id, updates) => {
+          const newSessionCosts = get().sessionCosts.map(s =>
+            s.id === id ? { ...s, ...updates } : s
+          );
+          set({ sessionCosts: newSessionCosts });
+          sync({ sessionCosts: newSessionCosts });
+        },
+
+        deleteSessionCost: (id) => {
+          const newSessionCosts = get().sessionCosts.filter(s => s.id !== id);
+          set({ sessionCosts: newSessionCosts });
+          sync({ sessionCosts: newSessionCosts });
+        },
+
+        addCourt: (name, mapUrl) => {
+          const newCourts = [...get().courts, { id: uuidv4(), name: name.trim(), mapUrl: mapUrl.trim() }];
+          set({ courts: newCourts });
+          sync({ courts: newCourts });
+        },
+
+        updateCourt: (id, updates) => {
+          const newCourts = get().courts.map(c => c.id === id ? { ...c, ...updates } : c);
+          set({ courts: newCourts });
+          sync({ courts: newCourts });
+        },
+
+        deleteCourt: (id) => {
+          const newCourts = get().courts.filter(c => c.id !== id);
+          set({ courts: newCourts });
+          sync({ courts: newCourts });
+        },
       };
     },
     {
@@ -234,6 +291,18 @@ export const useStore = create<AppState>()(
             }
             return p;
           });
+        }
+        if (persistedState && !persistedState.sessionCosts) {
+          persistedState.sessionCosts = [];
+        }
+        if (persistedState && !persistedState.courts) {
+          persistedState.courts = [];
+        }
+        if (persistedState?.sessionCosts) {
+          persistedState.sessionCosts = persistedState.sessionCosts.map((s: any) => ({
+            ...s,
+            costs: normalizeCostBreakdown(s.costs),
+          }));
         }
         return persistedState;
       }

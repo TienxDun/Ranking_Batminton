@@ -39,3 +39,31 @@ export type ScheduledSet = {
   team2: [string, string];
 };
 
+export type CostLineItem = {
+  unitPrice: number;
+  quantity: number;
+};
+
+export type SessionCostBreakdown = {
+  court: CostLineItem;
+  water: CostLineItem;
+  shuttlecock: CostLineItem;
+  other: CostLineItem;
+  otherNote?: string;
+};
+
+export type Court = {
+  id: string;
+  name: string;
+  mapUrl: string;
+};
+
+export type SessionCost = {
+  id: string;
+  date: string;
+  courtId?: string;
+  costs: SessionCostBreakdown;
+  participantIds: string[];
+  notes?: string;
+};
+

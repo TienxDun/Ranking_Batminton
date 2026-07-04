@@ -9,12 +9,13 @@ import Analytics from './components/Analytics';
 import MatchForm from './components/MatchForm';
 import MatchHistory from './components/MatchHistory';
 import PlayerManagement from './components/PlayerManagement';
+import SessionCosts from './components/SessionCosts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { Button } from './components/ui/button';
-import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings } from 'lucide-react';
+import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings, Wallet } from 'lucide-react';
 import { useStore } from './store';
 
-type Tab = 'dashboard' | 'analytics' | 'add' | 'history' | 'players';
+type Tab = 'dashboard' | 'analytics' | 'add' | 'history' | 'costs' | 'players';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>('dashboard');
@@ -167,6 +168,17 @@ export default function App() {
               <span>Lịch Sử</span>
             </button>
             <button 
+              onClick={() => setActiveTab('costs')} 
+              className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
+                activeTab === 'costs' 
+                  ? 'bg-gradient-to-r from-teal-500/20 to-indigo-500/10 text-teal-300 border border-teal-500/20 shadow-inner' 
+                  : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
+              }`}
+            >
+              <Wallet className={`w-3 h-3 lg:w-3.5 lg:h-3.5 transition-transform duration-300 ${activeTab === 'costs' ? 'scale-110 text-teal-400' : ''}`} /> 
+              <span>Chi phí</span>
+            </button>
+            <button 
               onClick={() => setActiveTab('players')} 
               className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'players' 
@@ -224,6 +236,9 @@ export default function App() {
         <div className={activeTab === 'history' ? 'tab-content-active' : 'hidden'}>
           <MatchHistory />
         </div>
+        <div className={activeTab === 'costs' ? 'tab-content-active' : 'hidden'}>
+          <SessionCosts />
+        </div>
         <div className={activeTab === 'players' ? 'tab-content-active' : 'hidden'}>
           <PlayerManagement />
         </div>
@@ -267,6 +282,15 @@ export default function App() {
         >
           <History className="w-4.5 h-4.5 mb-1" />
           <span className="text-[10px] font-semibold">Lịch Sử</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('costs')} 
+          className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${
+            activeTab === 'costs' ? 'text-teal-400 scale-105' : 'text-slate-400'
+          }`}
+        >
+          <Wallet className="w-4.5 h-4.5 mb-1" />
+          <span className="text-[10px] font-semibold">Chi phí</span>
         </button>
       </nav>
 
