@@ -17,10 +17,43 @@ import { useStore } from './store';
 
 type Tab = 'dashboard' | 'analytics' | 'add' | 'history' | 'costs' | 'players';
 
+const getTabFromHash = (hash: string): Tab => {
+  const tab = hash.replace('#', '') as Tab;
+  const validTabs: Tab[] = ['dashboard', 'analytics', 'add', 'history', 'costs', 'players'];
+  return validTabs.includes(tab) ? tab : 'dashboard';
+};
+
 export default function App() {
-  const [activeTab, setActiveTab] = useState<Tab>('dashboard');
+  const [activeTab, setActiveTab] = useState<Tab>(() => getTabFromHash(window.location.hash));
   const [prefilledMatch, setPrefilledMatch] = useState<{ t1p1: string; t1p2: string; t2p1: string; t2p2: string } | undefined>(undefined);
   const { fetchDataFromServer, isLoading, error, theme, toggleTheme } = useStore();
+
+  const changeTab = (newTab: Tab, options?: { replace?: boolean }) => {
+    if (activeTab === newTab) return;
+    setActiveTab(newTab);
+    if (options?.replace) {
+      window.history.replaceState({ tab: newTab }, '', `#${newTab}`);
+    } else {
+      window.history.pushState({ tab: newTab }, '', `#${newTab}`);
+    }
+  };
+
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      const tab = (event.state?.tab || getTabFromHash(window.location.hash)) as Tab;
+      setActiveTab(tab);
+    };
+
+    window.addEventListener('popstate', handlePopState);
+
+    // Cài đặt trạng thái ban đầu của lịch sử trình duyệt nếu chưa có
+    const currentTab = getTabFromHash(window.location.hash);
+    window.history.replaceState({ tab: currentTab }, '', `#${currentTab}`);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
 
   useEffect(() => {
     if (theme === 'light') {
@@ -131,7 +164,7 @@ export default function App() {
           {/* Menu Navigation ở giữa */}
           <div className="hidden md:flex items-center bg-slate-950/30 border border-white/5 p-1 rounded-xl gap-0.5 shadow-inner">
             <button 
-              onClick={() => setActiveTab('dashboard')} 
+              onClick={() => changeTab('dashboard')} 
               className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'dashboard' 
                   ? 'bg-gradient-to-r from-teal-500/20 to-indigo-500/10 text-teal-300 border border-teal-500/20 shadow-inner' 
@@ -142,7 +175,7 @@ export default function App() {
               <span>BXH</span>
             </button>
             <button 
-              onClick={() => setActiveTab('analytics')} 
+              onClick={() => changeTab('analytics')} 
               className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'analytics' 
                   ? 'bg-gradient-to-r from-teal-500/20 to-indigo-500/10 text-teal-300 border border-teal-500/20 shadow-inner' 
@@ -154,7 +187,7 @@ export default function App() {
             </button>
 
             <button 
-              onClick={() => setActiveTab('add')} 
+              onClick={() => changeTab('add')} 
               className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'add' 
                   ? 'bg-gradient-to-r from-teal-500/20 to-indigo-500/10 text-teal-300 border border-teal-500/20 shadow-inner' 
@@ -165,7 +198,7 @@ export default function App() {
               <span>Thêm Trận</span>
             </button>
             <button 
-              onClick={() => setActiveTab('history')} 
+              onClick={() => changeTab('history')} 
               className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'history' 
                   ? 'bg-gradient-to-r from-teal-500/20 to-indigo-500/10 text-teal-300 border border-teal-500/20 shadow-inner' 
@@ -176,7 +209,7 @@ export default function App() {
               <span>Lịch Sử</span>
             </button>
             <button 
-              onClick={() => setActiveTab('costs')} 
+              onClick={() => changeTab('costs')} 
               className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'costs' 
                   ? 'bg-gradient-to-r from-teal-500/20 to-indigo-500/10 text-teal-300 border border-teal-500/20 shadow-inner' 
@@ -187,7 +220,7 @@ export default function App() {
               <span>Chi phí</span>
             </button>
             <button 
-              onClick={() => setActiveTab('players')} 
+              onClick={() => changeTab('players')} 
               className={`px-2 lg:px-3.5 py-1.5 lg:py-2 rounded-lg text-[10px] lg:text-xs font-bold transition-all duration-300 flex items-center gap-1.5 lg:gap-2 whitespace-nowrap cursor-pointer ${
                 activeTab === 'players' 
                   ? 'bg-gradient-to-r from-teal-500/20 to-indigo-500/10 text-teal-300 border border-teal-500/20 shadow-inner' 
@@ -211,7 +244,7 @@ export default function App() {
               {theme === 'light' ? <Moon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-indigo-400" /> : <Sun className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-amber-400" />}
             </button>
             <button
-              onClick={() => setActiveTab('players')}
+              onClick={() => changeTab('players')}
               className={`w-7 h-7 rounded-lg bg-slate-950/40 border flex items-center justify-center shadow-lg hover:border-teal-500/30 text-slate-300 hover:text-teal-400 active:scale-95 transition-all duration-300 cursor-pointer md:hidden ${
                 activeTab === 'players' ? 'border-teal-500/30 text-teal-400 bg-teal-500/10' : 'border-white/10'
               }`}
@@ -271,7 +304,7 @@ export default function App() {
           <MatchForm 
             onSaved={() => {
               setPrefilledMatch(undefined);
-              setActiveTab('dashboard');
+              changeTab('dashboard', { replace: true });
             }} 
             initialData={prefilledMatch}
           />
@@ -290,7 +323,7 @@ export default function App() {
       {/* Mobile Navigation Bar */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 glass-nav flex justify-around p-1 z-10 pb-safe shadow-lg gap-0.5">
         <button 
-          onClick={() => setActiveTab('dashboard')} 
+          onClick={() => changeTab('dashboard')} 
           className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${
             activeTab === 'dashboard' ? 'text-teal-400 scale-105' : 'text-slate-400'
           }`}
@@ -299,7 +332,7 @@ export default function App() {
           <span className="text-[10px] font-semibold">BXH</span>
         </button>
         <button 
-          onClick={() => setActiveTab('analytics')} 
+          onClick={() => changeTab('analytics')} 
           className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${
             activeTab === 'analytics' ? 'text-teal-400 scale-105' : 'text-slate-400'
           }`}
@@ -309,7 +342,7 @@ export default function App() {
         </button>
 
         <button 
-          onClick={() => setActiveTab('add')} 
+          onClick={() => changeTab('add')} 
           className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${
             activeTab === 'add' ? 'text-teal-400 scale-105' : 'text-slate-400'
           }`}
@@ -318,7 +351,7 @@ export default function App() {
           <span className="text-[10px] font-semibold">Thêm</span>
         </button>
         <button 
-          onClick={() => setActiveTab('history')} 
+          onClick={() => changeTab('history')} 
           className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${
             activeTab === 'history' ? 'text-teal-400 scale-105' : 'text-slate-400'
           }`}
@@ -327,7 +360,7 @@ export default function App() {
           <span className="text-[10px] font-semibold">Lịch Sử</span>
         </button>
         <button 
-          onClick={() => setActiveTab('costs')} 
+          onClick={() => changeTab('costs')} 
           className={`flex flex-col items-center p-1 rounded-lg flex-1 transition-all ${
             activeTab === 'costs' ? 'text-teal-400 scale-105' : 'text-slate-400'
           }`}
