@@ -12,7 +12,7 @@ import PlayerManagement from './components/PlayerManagement';
 import SessionCosts from './components/SessionCosts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import { Button } from './components/ui/button';
-import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings, Wallet } from 'lucide-react';
+import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings, Wallet, AlertCircle } from 'lucide-react';
 import { useStore } from './store';
 
 type Tab = 'dashboard' | 'analytics' | 'add' | 'history' | 'costs' | 'players';
@@ -57,7 +57,7 @@ export default function App() {
 
     if (error) {
       return (
-        <div className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-rose-500/10 border border-rose-500/20 text-[9px] lg:text-[10px] font-bold text-rose-400 flex-shrink-0">
+        <div className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-rose-500/10 border border-rose-500/20 text-[9px] lg:text-[10px] font-bold text-rose-400 flex-shrink-0" title={error}>
           <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse flex-shrink-0" />
           <span className="hidden lg:inline whitespace-nowrap">Mất kết nối</span>
         </div>
@@ -74,9 +74,9 @@ export default function App() {
     }
 
     return (
-      <div className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-teal-500/10 border border-teal-500/20 text-[9px] lg:text-[10px] font-bold text-teal-400 flex-shrink-0" title="Chạy ở chế độ lưu trữ cục bộ">
-        <span className="h-2 w-2 rounded-full bg-teal-400 flex-shrink-0" />
-        <span className="hidden lg:inline whitespace-nowrap">Dữ liệu Local</span>
+      <div className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-rose-500/10 border border-rose-500/20 text-[9px] lg:text-[10px] font-bold text-rose-400 flex-shrink-0" title="Chưa cấu hình cơ sở dữ liệu Google Sheets">
+        <span className="h-2 w-2 rounded-full bg-rose-400 flex-shrink-0" />
+        <span className="hidden lg:inline whitespace-nowrap">Chưa cấu hình DB</span>
       </div>
     );
   };
@@ -223,6 +223,41 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {error && (
+        <div className="max-w-4xl mx-auto px-4 pt-6 pb-0 relative z-1">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 p-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 backdrop-blur-md text-rose-200">
+            <div className="flex items-start sm:items-center gap-3">
+              <div className="p-2 rounded-xl bg-rose-500/15 text-rose-400 flex-shrink-0">
+                <AlertCircle className="w-5 h-5" />
+              </div>
+              <div>
+                <p className="font-bold text-sm leading-snug">
+                  {error === 'Chưa cấu hình VITE_GOOGLE_SCRIPT_URL' 
+                    ? 'Chưa cấu hình cơ sở dữ liệu' 
+                    : 'Lỗi kết nối cơ sở dữ liệu'}
+                </p>
+                <p className="text-xs text-rose-300/85 mt-0.5 leading-relaxed">
+                  {error === 'Chưa cấu hình VITE_GOOGLE_SCRIPT_URL'
+                    ? 'Vui lòng bổ sung VITE_GOOGLE_SCRIPT_URL vào file .env trong thư mục gốc và khởi động lại dev server.'
+                    : 'Không thể kết nối tới Google Sheets. Vui lòng kiểm tra kết nối mạng của bạn hoặc cấu hình URL trong .env.'}
+                </p>
+              </div>
+            </div>
+            {error !== 'Chưa cấu hình VITE_GOOGLE_SCRIPT_URL' && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => fetchDataFromServer()}
+                disabled={isLoading}
+                className="flex-shrink-0 text-xs font-bold border-rose-500/20 bg-rose-500/5 hover:bg-rose-500/10 hover:text-white text-rose-300 w-full sm:w-auto h-8 px-4"
+              >
+                Thử lại
+              </Button>
+            )}
+          </div>
+        </div>
+      )}
 
       <main className="max-w-4xl mx-auto px-4 py-6 relative z-1">
         <div className={activeTab === 'dashboard' ? 'tab-content-active' : 'hidden'}>

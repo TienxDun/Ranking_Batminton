@@ -102,7 +102,7 @@ interface AppState {
 export const useStore = create<AppState>()(
   persist(
     (set, get) => {
-      // Hàm đồng bộ dữ liệu ngầm lên server (Google Sheets hoặc Express Server)
+      // Hàm đồng bộ dữ liệu ngầm lên server Google Sheets
       const sync = async (updatedFields: Partial<AppState>) => {
         const players = updatedFields.players ?? get().players;
         const matches = updatedFields.matches ?? get().matches;
@@ -113,31 +113,27 @@ export const useStore = create<AppState>()(
         const sessionCosts = updatedFields.sessionCosts !== undefined ? updatedFields.sessionCosts : get().sessionCosts;
         const courts = updatedFields.courts !== undefined ? updatedFields.courts : get().courts;
 
-        // Nếu chạy trên GitHub Pages tĩnh và không có link Google Sheets, chỉ lưu local
-        const isGitHubPages = window.location.hostname.endsWith('github.io');
-        if (!GOOGLE_SCRIPT_URL && isGitHubPages) {
+        if (!GOOGLE_SCRIPT_URL) {
+          console.warn('Không thể đồng bộ: Chưa cấu hình VITE_GOOGLE_SCRIPT_URL');
+          set({ error: 'Chưa cấu hình VITE_GOOGLE_SCRIPT_URL' });
           return;
         }
 
         try {
-          if (GOOGLE_SCRIPT_URL) {
-            await fetch(GOOGLE_SCRIPT_URL, {
-              method: 'POST',
-              headers: { 'Content-Type': 'text/plain' },
-              body: JSON.stringify({ players, matches, config: configRemote, schedule, sessionCosts, courts }),
-            });
+          const response = await fetch(GOOGLE_SCRIPT_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'text/plain' },
+            body: JSON.stringify({ players, matches, config: configRemote, schedule, sessionCosts, courts }),
+          });
+          if (!response.ok) {
+            console.error('Lỗi phản hồi từ Google Scripts API');
+            set({ error: 'Lỗi đồng bộ dữ liệu' });
           } else {
-            const response = await fetch('/api/data', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ players, matches, config: configRemote, schedule, sessionCosts, courts }),
-            });
-            if (!response.ok) {
-              console.error('Lỗi phản hồi từ API Express');
-            }
+            set({ error: null });
           }
         } catch (e) {
           console.error('Lỗi kết nối khi đồng bộ dữ liệu:', e);
+          set({ error: 'Không thể kết nối đến server' });
         }
       };
 
@@ -156,16 +152,14 @@ export const useStore = create<AppState>()(
         error: null,
         
         fetchDataFromServer: async () => {
-          const isGitHubPages = window.location.hostname.endsWith('github.io');
-          if (!GOOGLE_SCRIPT_URL && isGitHubPages) {
-            set({ isLoading: false, error: null });
+          set({ isLoading: true, error: null });
+          if (!GOOGLE_SCRIPT_URL) {
+            set({ error: 'Chưa cấu hình VITE_GOOGLE_SCRIPT_URL', isLoading: false });
             return;
           }
 
-          set({ isLoading: true, error: null });
           try {
-            const url = GOOGLE_SCRIPT_URL || '/api/data';
-            const response = await fetch(url);
+            const response = await fetch(GOOGLE_SCRIPT_URL);
             if (response.ok) {
               const data = await response.json();
               const localConfig = get().config;
@@ -185,6 +179,7 @@ export const useStore = create<AppState>()(
                 sessionCosts: mergedSessionCosts,
                 courts: mergedCourts,
                 isLoading: false,
+                error: null,
               });
 
               // Server cũ chưa có sessionCosts/courts — đẩy dữ liệu local lên
@@ -199,10 +194,10 @@ export const useStore = create<AppState>()(
                 sync({ sessionCosts: mergedSessionCosts, courts: mergedCourts });
               }
             } else {
-              set({ error: isGitHubPages ? null : 'Không thể tải dữ liệu từ server', isLoading: false });
+              set({ error: 'Không thể tải dữ liệu từ server', isLoading: false });
             }
           } catch (err) {
-            set({ error: isGitHubPages ? null : 'Không thể kết nối đến server', isLoading: false });
+            set({ error: 'Không thể kết nối đến server', isLoading: false });
           }
         },
 

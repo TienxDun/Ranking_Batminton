@@ -294,33 +294,85 @@ input[type="time"]::-webkit-date-and-time-value {
     background-color: #ffffff;
   }
 
-  /* Row-specific highlights inherited correctly */
-  .bg-amber-500\/5 .sticky-rank, .bg-amber-500\/5 .sticky-name {
-    background-color: #171c2b !important;
+  /* Specific overrides for podium rows (Gold, Silver, Bronze) */
+  tr.row-gold td.sticky-rank, 
+  tr.row-gold td.sticky-name {
+    background-color: #201a12 !important;
   }
-  .light .bg-amber-500\/5 .sticky-rank, .light .bg-amber-500\/5 .sticky-name {
-    background-color: #fff9e6 !important;
-  }
-
-  .bg-slate-300\/5 .sticky-rank, .bg-slate-300\/5 .sticky-name {
-    background-color: #131a29 !important;
-  }
-  .light .bg-slate-300\/5 .sticky-rank, .light .bg-slate-300\/5 .sticky-name {
-    background-color: #f5f8fc !important;
+  tr.row-gold:hover td.sticky-rank, 
+  tr.row-gold:hover td.sticky-name {
+    background-color: #2b2317 !important;
   }
 
-  .bg-amber-700\/5 .sticky-rank, .bg-amber-700\/5 .sticky-name {
-    background-color: #1a1725 !important;
+  tr.row-silver td.sticky-rank, 
+  tr.row-silver td.sticky-name {
+    background-color: #181c24 !important;
   }
-  .light .bg-amber-700\/5 .sticky-rank, .light .bg-amber-700\/5 .sticky-name {
-    background-color: #fff4ea !important;
+  tr.row-silver:hover td.sticky-rank, 
+  tr.row-silver:hover td.sticky-name {
+    background-color: #222732 !important;
   }
 
-  /* Keep hover background applied on sticky cells */
-  tr:hover .sticky-rank, tr:hover .sticky-name, tr:hover .sticky-date {
+  tr.row-bronze td.sticky-rank, 
+  tr.row-bronze td.sticky-name {
+    background-color: #211712 !important;
+  }
+  tr.row-bronze:hover td.sticky-rank, 
+  tr.row-bronze:hover td.sticky-name {
+    background-color: #2e1f18 !important;
+  }
+
+  tr.row-normal td.sticky-rank, 
+  tr.row-normal td.sticky-name {
+    background-color: #0f172a !important;
+  }
+  tr.row-normal:hover td.sticky-rank, 
+  tr.row-normal:hover td.sticky-name {
+    background-color: #162032 !important;
+  }
+
+  /* --- LIGHT MODE PODIUM OVERRIDES --- */
+  .light tr.row-gold td.sticky-rank, 
+  .light tr.row-gold td.sticky-name {
+    background-color: #fef3c7 !important;
+  }
+  .light tr.row-gold:hover td.sticky-rank, 
+  .light tr.row-gold:hover td.sticky-name {
+    background-color: #fde68a !important;
+  }
+
+  .light tr.row-silver td.sticky-rank, 
+  .light tr.row-silver td.sticky-name {
+    background-color: #f1f5f9 !important;
+  }
+  .light tr.row-silver:hover td.sticky-rank, 
+  .light tr.row-silver:hover td.sticky-name {
+    background-color: #e2e8f0 !important;
+  }
+
+  .light tr.row-bronze td.sticky-rank, 
+  .light tr.row-bronze td.sticky-name {
+    background-color: #ffedd5 !important;
+  }
+  .light tr.row-bronze:hover td.sticky-rank, 
+  .light tr.row-bronze:hover td.sticky-name {
+    background-color: #fed7aa !important;
+  }
+
+  .light tr.row-normal td.sticky-rank, 
+  .light tr.row-normal td.sticky-name {
+    background-color: #ffffff !important;
+  }
+  .light tr.row-normal:hover td.sticky-rank, 
+  .light tr.row-normal:hover td.sticky-name {
+    background-color: #f1f5f9 !important;
+  }
+
+  /* Keep hover background applied on other normal sticky cells */
+  tr:hover .sticky-date {
     background-color: #1e293b !important;
   }
-  .light tr:hover .sticky-rank, .light tr:hover .sticky-name, .light tr:hover .sticky-date {
+  .light tr:hover .sticky-date {
     background-color: #e2e8f0 !important;
   }
 
@@ -528,6 +580,214 @@ input[type="button"]:disabled,
 input[type="submit"]:disabled {
   cursor: not-allowed;
 }
+
+/* ==========================================================================
+   Highlight Top 3 (Vàng, Bạc, Đồng) - Chế độ Thẻ Nổi (Floating Metallic Cards)
+   ========================================================================== */
+
+/* Thiết lập cấu trúc bảng dạng thẻ nổi */
+.filter-refresh table {
+  border-collapse: separate !important;
+  border-spacing: 0 6px !important; /* Tạo khoảng hở dọc nhỏ giữa các hàng để làm nổi bật khung card */
+}
+
+.filter-refresh tr {
+  border-bottom: none !important; /* Bỏ viền dưới mặc định của thẻ tr */
+  background-color: transparent !important;
+}
+
+.filter-refresh td {
+  border-top: 1px solid transparent;
+  border-bottom: 1px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.filter-refresh td:first-child {
+  border-left: 1px solid transparent;
+  border-top-left-radius: 12px;
+  border-bottom-left-radius: 12px;
+}
+
+.filter-refresh td:last-child {
+  border-right: 1px solid transparent;
+  border-top-right-radius: 12px;
+  border-bottom-right-radius: 12px;
+}
+
+/* --- HÀNG GOLD (TOP 1) --- */
+.row-gold td {
+  border-top-color: rgba(245, 158, 11, 0.35) !important;
+  border-bottom-color: rgba(245, 158, 11, 0.35) !important;
+  background: #201a12 !important; /* Solid background */
+}
+.row-gold td:first-child {
+  border-left-color: rgba(245, 158, 11, 0.35) !important;
+  box-shadow: -4px 0 12px -3px rgba(245, 158, 11, 0.2);
+}
+.row-gold td:last-child {
+  border-right-color: rgba(245, 158, 11, 0.35) !important;
+  box-shadow: 4px 0 12px -3px rgba(245, 158, 11, 0.2);
+}
+/* Hover effect cho ô thường */
+.row-gold:hover td {
+  background: #2b2317 !important;
+}
+
+/* --- HÀNG SILVER (TOP 2) --- */
+.row-silver td {
+  border-top-color: rgba(148, 163, 184, 0.3) !important;
+  border-bottom-color: rgba(148, 163, 184, 0.3) !important;
+  background: #181c24 !important; /* Solid background */
+}
+.row-silver td:first-child {
+  border-left-color: rgba(148, 163, 184, 0.3) !important;
+  box-shadow: -4px 0 12px -3px rgba(148, 163, 184, 0.12);
+}
+.row-silver td:last-child {
+  border-right-color: rgba(148, 163, 184, 0.3) !important;
+  box-shadow: 4px 0 12px -3px rgba(148, 163, 184, 0.12);
+}
+/* Hover effect cho ô thường */
+.row-silver:hover td {
+  background: #222732 !important;
+}
+
+/* --- HÀNG BRONZE (TOP 3) --- */
+.row-bronze td {
+  border-top-color: rgba(180, 83, 9, 0.35) !important;
+  border-bottom-color: rgba(180, 83, 9, 0.35) !important;
+  background: #211712 !important; /* Solid background */
+}
+.row-bronze td:first-child {
+  border-left-color: rgba(180, 83, 9, 0.35) !important;
+  box-shadow: -4px 0 12px -3px rgba(180, 83, 9, 0.15);
+}
+.row-bronze td:last-child {
+  border-right-color: rgba(180, 83, 9, 0.35) !important;
+  box-shadow: 4px 0 12px -3px rgba(180, 83, 9, 0.15);
+}
+/* Hover effect cho ô thường */
+.row-bronze:hover td {
+  background: #2e1f18 !important;
+}
+
+/* --- HÀNG THƯỜNG (ROW NORMAL) --- */
+.row-normal td {
+  border-top-color: rgba(255, 255, 255, 0.02) !important;
+  border-bottom-color: rgba(255, 255, 255, 0.02) !important;
+  background: rgba(255, 255, 255, 0.01) !important;
+}
+.row-normal td:first-child {
+  border-left-color: rgba(255, 255, 255, 0.02) !important;
+}
+.row-normal td:last-child {
+  border-right-color: rgba(255, 255, 255, 0.02) !important;
+}
+/* Hover effect cho ô thường */
+.row-normal:hover td {
+  background: rgba(255, 255, 255, 0.04) !important;
+}
+
+/* --- ELO BADGES TRIỆU TIÊU MÀU TEAL CHO TOP 3 --- */
+.row-gold .badge-elo {
+  background-color: rgba(245, 158, 11, 0.15) !important;
+  color: #fbbf24 !important;
+  border-color: rgba(245, 158, 11, 0.25) !important;
+}
+.row-silver .badge-elo {
+  background-color: rgba(148, 163, 184, 0.15) !important;
+  color: #cbd5e1 !important;
+  border-color: rgba(148, 163, 184, 0.25) !important;
+}
+.row-bronze .badge-elo {
+  background-color: rgba(180, 83, 9, 0.15) !important;
+  color: #f97316 !important;
+  border-color: rgba(180, 83, 9, 0.25) !important;
+}
+
+/* --- GIAO DIỆN SÁNG (LIGHT MODE) OVERRIDES --- */
+.light .row-gold td {
+  border-top-color: rgba(217, 119, 6, 0.3) !important;
+  border-bottom-color: rgba(217, 119, 6, 0.3) !important;
+  background: #fef3c7 !important; /* Solid background */
+}
+.light .row-gold td:first-child {
+  border-left-color: rgba(217, 119, 6, 0.3) !important;
+  box-shadow: -4px 0 12px -3px rgba(217, 119, 6, 0.12);
+}
+.light .row-gold td:last-child {
+  border-right-color: rgba(217, 119, 6, 0.3) !important;
+  box-shadow: 4px 0 12px -3px rgba(217, 119, 6, 0.12);
+}
+.light .row-gold:hover td {
+  background: #fde68a !important;
+}
+.light .row-gold .badge-elo {
+  background-color: rgba(217, 119, 6, 0.1) !important;
+  color: #b45309 !important;
+  border-color: rgba(217, 119, 6, 0.2) !important;
+}
+
+.light .row-silver td {
+  border-top-color: rgba(100, 116, 139, 0.25) !important;
+  border-bottom-color: rgba(100, 116, 139, 0.25) !important;
+  background: #f1f5f9 !important; /* Solid background */
+}
+.light .row-silver td:first-child {
+  border-left-color: rgba(100, 116, 139, 0.25) !important;
+  box-shadow: -4px 0 12px -3px rgba(100, 116, 139, 0.08);
+}
+.light .row-silver td:last-child {
+  border-right-color: rgba(100, 116, 139, 0.25) !important;
+  box-shadow: 4px 0 12px -3px rgba(100, 116, 139, 0.08);
+}
+.light .row-silver:hover td {
+  background: #e2e8f0 !important;
+}
+.light .row-silver .badge-elo {
+  background-color: rgba(100, 116, 139, 0.1) !important;
+  color: #475569 !important;
+  border-color: rgba(100, 116, 139, 0.2) !important;
+}
+
+.light .row-bronze td {
+  border-top-color: rgba(180, 83, 9, 0.28) !important;
+  border-bottom-color: rgba(180, 83, 9, 0.28) !important;
+  background: #ffedd5 !important; /* Solid background */
+}
+.light .row-bronze td:first-child {
+  border-left-color: rgba(180, 83, 9, 0.28) !important;
+  box-shadow: -4px 0 12px -3px rgba(180, 83, 9, 0.1);
+}
+.light .row-bronze td:last-child {
+  border-right-color: rgba(180, 83, 9, 0.28) !important;
+  box-shadow: 4px 0 12px -3px rgba(180, 83, 9, 0.1);
+}
+.light .row-bronze:hover td {
+  background: #fed7aa !important;
+}
+.light .row-bronze .badge-elo {
+  background-color: rgba(180, 83, 9, 0.1) !important;
+  color: #9a3412 !important;
+  border-color: rgba(180, 83, 9, 0.2) !important;
+}
+
+/* Hàng thường ở Light Mode */
+.light .row-normal td {
+  border-top-color: rgba(15, 23, 42, 0.03) !important;
+  border-bottom-color: rgba(15, 23, 42, 0.03) !important;
+  background: rgba(15, 23, 42, 0.01) !important;
+}
+.light .row-normal td:first-child {
+  border-left-color: rgba(15, 23, 42, 0.03) !important;
+}
+.light .row-normal td:last-child {
+  border-right-color: rgba(15, 23, 42, 0.03) !important;
+}
+.light .row-normal:hover td {
+  background: rgba(15, 23, 42, 0.04) !important;
+}
+
 
 
 

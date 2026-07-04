@@ -23,6 +23,8 @@ import {
   QrCode,
   Download,
   Eye,
+  Activity,
+  TrendingUp,
 } from 'lucide-react';
 import { CostLineItem, SessionCost, SessionCostBreakdown } from '../types';
 import {
@@ -75,9 +77,9 @@ function PaymentQrPreview({
   accountName?: string;
   onClose: () => void;
 }) {
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm"
       role="dialog"
       aria-modal="true"
       aria-label="Phóng to mã QR nhận tiền"
@@ -127,36 +129,50 @@ function PaymentQrPreview({
           Tải ảnh QR
         </Button>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
 function PaymentQrPanel({
   highlightAmount,
+  compact = false,
 }: {
   highlightAmount?: number;
+  compact?: boolean;
 }) {
   const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
     <>
-      <Card className="border-teal-500/15 bg-gradient-to-br from-teal-500/5 to-transparent">
-        <CardHeader className="pb-3 text-center sm:text-left">
-          <CardTitle className="text-sm sm:text-base font-bold text-white flex items-center justify-center sm:justify-start gap-2">
-            <QrCode className="w-4 h-4 text-teal-400" />
-            MÃ QR NHẬN TIỀN
-          </CardTitle>
-          <CardDescription>
-            Quét mã để chuyển khoản
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="flex flex-col items-center gap-4">
+      <Card className={`border-teal-500/15 bg-gradient-to-br from-teal-500/5 to-transparent ${compact ? 'p-2' : ''}`}>
+        {!compact ? (
+          <CardHeader className="pb-3 text-center sm:text-left">
+            <CardTitle className="text-sm sm:text-base font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+              <QrCode className="w-4 h-4 text-teal-400" />
+              MÃ QR NHẬN TIỀN
+            </CardTitle>
+            <CardDescription>
+              Quét mã để chuyển khoản
+            </CardDescription>
+          </CardHeader>
+        ) : (
+          <div className="p-2 pb-1 text-center">
+            <h4 className="text-xs font-bold text-teal-400 flex items-center justify-center gap-1.5 uppercase tracking-wider">
+              <QrCode className="w-3.5 h-3.5" />
+              QR chuyển khoản
+            </h4>
+          </div>
+        )}
+        <CardContent className={compact ? 'p-2 pt-1' : ''}>
+          <div className={`flex flex-col items-center ${compact ? 'gap-2' : 'gap-4'}`}>
             <div className="flex-shrink-0">
               <button
                 type="button"
                 onClick={() => setPreviewOpen(true)}
-                className="w-36 h-36 sm:w-40 sm:h-40 rounded-xl bg-white p-2 border-2 border-white/20 shadow-lg flex items-center justify-center cursor-zoom-in transition-transform hover:scale-[1.01]"
+                className={`rounded-xl bg-white p-1.5 border border-white/10 shadow-md flex items-center justify-center cursor-zoom-in transition-transform hover:scale-[1.01] ${
+                  compact ? 'w-28 h-28' : 'w-36 h-36 sm:w-40 sm:h-40'
+                }`}
                 aria-label="Phóng to mã QR nhận tiền"
               >
                 <img
@@ -167,7 +183,7 @@ function PaymentQrPanel({
               </button>
             </div>
             {highlightAmount !== undefined && highlightAmount > 0 && (
-              <p className="text-center text-sm font-bold text-teal-400 whitespace-nowrap tabular-nums">
+              <p className={`text-center font-black text-teal-400 whitespace-nowrap tabular-nums ${compact ? 'text-xs mt-0.5' : 'text-sm'}`}>
                 {formatVND(highlightAmount)}
               </p>
             )}
@@ -251,6 +267,9 @@ function SessionCostDetailModal({
   getCourtName: (id?: string) => string | undefined;
   onClose: () => void;
 }) {
+  const { courts } = useStore();
+  const court = courts.find(c => c.id === session.courtId);
+
   useEffect(() => {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -278,106 +297,160 @@ function SessionCostDetailModal({
       onClick={onClose}
     >
       <div
-        className="modal-surface flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden border border-white/10 shadow-2xl"
+        className="modal-surface flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden border border-white/10 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative flex-shrink-0 border-b border-slate-200 bg-white p-4 pr-14 sm:p-5 sm:pr-14">
-          <div className="flex items-center gap-2 text-teal-600 mb-2">
-            <Wallet className="w-4 h-4" />
+        <div className="relative flex-shrink-0 border-b border-white/10 bg-slate-900 p-3 pr-14 sm:p-4 sm:pr-14">
+          <div className="flex items-center gap-1.5 text-teal-600 mb-1">
+            <Wallet className="w-3.5 h-3.5" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Chi tiết chi phí</span>
           </div>
-          <h3 className="text-xl font-black text-slate-950">{formatSessionDate(session.date)}</h3>
-          <p className="mt-1 text-xs text-slate-500">
+          <h3 className="text-lg font-black text-white">{formatSessionDate(session.date)}</h3>
+          <p className="text-xs text-slate-400 mt-0.5">
             {getCourtName(session.courtId) || 'Chưa chọn sân'}
           </p>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-3 top-3 z-20 cursor-pointer p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-950"
+            className="absolute right-3 top-2.5 z-20 cursor-pointer p-2 text-slate-400 hover:bg-white/5 hover:text-white"
             aria-label="Đóng chi tiết chi phí"
           >
             <X className="w-4 h-4" />
           </Button>
         </div>
 
-        <div className="min-h-0 flex-1 overflow-y-auto scroll-hide p-4 space-y-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-hide p-3.5 space-y-3.5">
+          {/* Summary Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             {[
               ['Tổng', formatVND(total), 'text-white'],
               ['Người', String(session.participantIds.length), 'text-white'],
               ['Mỗi người', formatVND(perPerson), 'text-teal-400'],
               ['Sân', getCourtName(session.courtId) || 'N/A', 'text-slate-200'],
-            ].map(([label, value, color]) => (
-              <div key={label} className="min-w-0 rounded-xl border border-white/5 bg-white/5 p-3">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
-                <p className={`mt-1 truncate text-sm font-black tabular-nums ${color}`} title={value}>
-                  {value}
-                </p>
-              </div>
-            ))}
+            ].map(([label, value, color]) => {
+              const isCourtLabel = label === 'Sân';
+              const hasMap = isCourtLabel && court?.mapUrl && isValidMapUrl(court.mapUrl);
+
+              return (
+                <div
+                  key={label}
+                  className={`min-w-0 rounded-xl border border-white/5 bg-white/5 p-2 transition-colors ${
+                    hasMap ? 'hover:bg-white/10 border-emerald-500/25 cursor-pointer' : ''
+                  }`}
+                  onClick={hasMap ? () => window.open(court.mapUrl, '_blank', 'noopener,noreferrer') : undefined}
+                  title={hasMap ? 'Click để mở Google Maps' : value}
+                >
+                  <div className="flex items-center justify-between gap-1">
+                    <p className="text-[9px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                    {hasMap && <ExternalLink className="w-2.5 h-2.5 text-emerald-400" />}
+                  </div>
+                  <p className={`mt-0.5 truncate text-xs sm:text-sm font-black tabular-nums ${color}`}>
+                    {value}
+                  </p>
+                </div>
+              );
+            })}
           </div>
 
-          <Card className="border-teal-500/15">
-            <CardHeader className="p-3 pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Wallet className="w-4 h-4 text-teal-400" />
-                Các khoản chi
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0 space-y-2">
-              {activeCostLines.length === 0 ? (
-                <p className="text-sm text-slate-500">Không có khoản chi.</p>
-              ) : activeCostLines.map(({ key, item, total: lineTotal }) => (
-                <div key={key} className="rounded-xl border border-white/5 bg-slate-950/30 p-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="font-bold text-slate-100">
-                        {COST_LINE_LABELS[key]}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {formatVND(item.unitPrice)} x {item.quantity} {COST_LINE_UNITS[key]}
-                      </p>
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-3.5">
+            {/* Left Column: Consolidated Details Card & Participants Card */}
+            <div className="space-y-3.5 min-w-0">
+              <Card className="border-teal-500/15 bg-gradient-to-br from-teal-500/[0.01] to-transparent">
+                <CardHeader className="p-2 pb-1.5">
+                  <CardTitle className="text-xs flex items-center gap-1.5">
+                    <Wallet className="w-3.5 h-3.5 text-teal-400" />
+                    Chi tiết dịch vụ
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-2 pt-0 space-y-2">
+                  {/* Expenses List */}
+                  <div className="divide-y divide-white/5 border border-white/5 rounded-lg bg-slate-950/30 overflow-hidden">
+                    {activeCostLines.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic p-2">Không có khoản chi.</p>
+                    ) : activeCostLines.map(({ key, item, total: lineTotal }) => (
+                      <div key={key} className="flex items-center justify-between gap-3 p-2 text-xs">
+                        <div className="min-w-0">
+                          <span className="font-bold text-slate-200">
+                            {COST_LINE_LABELS[key]}
+                          </span>
+                          <span className="text-[10px] text-slate-500 ml-2">
+                            ({formatVND(item.unitPrice)} x {item.quantity} {COST_LINE_UNITS[key]})
+                          </span>
+                        </div>
+                        <span className="font-black text-teal-400 whitespace-nowrap tabular-nums">
+                          {formatVND(lineTotal)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Notes inline at the bottom of details card */}
+                  {session.notes && (
+                    <div className="pt-2 border-t border-white/5 text-[11px] text-slate-400 leading-relaxed">
+                      <span className="font-bold text-slate-500 uppercase text-[9px] tracking-wider inline mr-1">Ghi chú:</span>
+                      {session.notes}
                     </div>
-                    <p className="font-black text-teal-400 whitespace-nowrap tabular-nums">
-                      {formatVND(lineTotal)}
-                    </p>
-                  </div>
-                  {key === 'other' && normalized.otherNote && (
-                    <p className="mt-2 border-t border-white/5 pt-2 text-xs text-slate-400">
-                      {normalized.otherNote}
-                    </p>
                   )}
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+                </CardContent>
+              </Card>
 
-          <Card className="border-indigo-500/15">
-            <CardHeader className="p-3 pb-2">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Users className="w-4 h-4 text-indigo-400" />
-                Người tham gia
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-3 pt-0">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {splits.map(({ playerId, amount }) => (
-                  <div key={playerId} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-sm">
-                    <span className="font-semibold text-slate-200 truncate">{getPlayerName(playerId)}</span>
-                    <span className="font-bold text-teal-400 whitespace-nowrap tabular-nums">{formatVND(amount)}</span>
+              {/* Participants List */}
+              <Card className="border-indigo-500/15">
+                <CardHeader className="p-2 pb-1.5">
+                  <CardTitle className="text-xs flex items-center gap-1.5">
+                    <Users className="w-3.5 h-3.5 text-indigo-400" />
+                    Người tham gia
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-2 pt-0">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5">
+                    {splits.map(({ playerId, amount }) => (
+                      <div key={playerId} className="flex items-center justify-between gap-2 rounded-lg bg-white/[0.02] border border-white/5 px-2 py-1 text-xs">
+                        <span className="font-semibold text-slate-200 truncate">{getPlayerName(playerId)}</span>
+                        <span className="font-bold text-teal-400 whitespace-nowrap tabular-nums">{formatVND(amount)}</span>
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {session.notes && (
-            <div className="rounded-xl border border-white/5 bg-white/5 p-3 text-sm text-slate-300">
-              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Ghi chú</p>
-              {session.notes}
+                </CardContent>
+              </Card>
             </div>
-          )}
+
+            {/* Right Column: Payment QR & Court Maps */}
+            <div className="flex flex-col gap-3">
+              <PaymentQrPanel highlightAmount={perPerson} compact />
+
+              {court && (
+                <Card className="border-emerald-500/15 bg-gradient-to-br from-emerald-500/[0.01] to-transparent p-2">
+                  <div className="flex items-center justify-between gap-2.5">
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      <div className="w-7 h-7 rounded-lg bg-emerald-500/10 flex items-center justify-center flex-shrink-0 text-emerald-400 border border-emerald-500/15">
+                        <MapPin className="w-3.5 h-3.5" />
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-[9px] text-slate-400 uppercase font-semibold leading-none">Địa chỉ sân</p>
+                        <p className="font-bold text-slate-200 text-xs mt-0.5 truncate" title={court.name}>
+                          {court.name}
+                        </p>
+                      </div>
+                    </div>
+                    {court.mapUrl && isValidMapUrl(court.mapUrl) ? (
+                      <a
+                        href={court.mapUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-shrink-0 flex items-center gap-0.5 px-2 py-1 rounded bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/15 text-emerald-400 hover:text-emerald-300 text-[10px] font-bold transition-all cursor-pointer"
+                      >
+                        Bản đồ <ExternalLink className="w-2.5 h-2.5" />
+                      </a>
+                    ) : (
+                      <span className="text-[9px] text-slate-500 italic flex-shrink-0">Chưa gắn địa chỉ</span>
+                    )}
+                  </div>
+                </Card>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>,
@@ -423,6 +496,13 @@ export default function SessionCosts() {
     () => [...sessionCosts].sort((a, b) => b.date.localeCompare(a.date)),
     [sessionCosts]
   );
+
+  const totalAllSessionsCost = useMemo(() => {
+    return sessionCosts.reduce((sum, session) => {
+      const normalized = normalizeCostBreakdown(session.costs);
+      return sum + getTotalCost(normalized);
+    }, 0);
+  }, [sessionCosts]);
 
   const totalCost = useMemo(() => getTotalCost(costs), [costs]);
   const splits = useMemo(
@@ -598,108 +678,8 @@ export default function SessionCosts() {
         </div>
       )}
 
-      <PaymentQrPanel
-        highlightAmount={showForm && perPerson > 0 ? perPerson : undefined}
-      />
-
-      {!showForm && (
-        <div className="flex flex-col sm:flex-row justify-end gap-2">
-          <Button
-            variant="ghost"
-            onClick={() => setShowCourtManager(v => !v)}
-            className="text-slate-300 hover:text-white border border-white/10 cursor-pointer"
-          >
-            <MapPin className="w-4 h-4 mr-2" />
-            {showCourtManager ? 'Ẩn quản lý chung' : 'Quản lý chung'}
-          </Button>
-          <Button onClick={openNewForm} className="bg-teal-500 hover:bg-teal-600 text-white-force font-bold cursor-pointer">
-            <Wallet className="w-4 h-4 mr-2" />
-            Thêm buổi đánh
-          </Button>
-        </div>
-      )}
-
-      {showCourtManager && !showForm && (
-        <Card>
-          <CardHeader className="text-center sm:text-left">
-            <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white flex items-center justify-center sm:justify-start gap-2">
-              <MapPin className="w-4 h-4 text-teal-400" />
-              QUẢN LÝ CHUNG
-            </CardTitle>
-            <CardDescription className="text-center sm:text-left">Thêm sân bằng URL Google Maps</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <form onSubmit={handleAddCourt} className="space-y-3">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Input
-                  placeholder="Tên sân (VD: Sân Cầu Lông ABC)"
-                  value={newCourtName}
-                  onChange={e => setNewCourtName(e.target.value)}
-                  className="h-10"
-                />
-                <Input
-                  placeholder="URL Google Maps (https://maps.google.com/...)"
-                  value={newCourtMapUrl}
-                  onChange={e => setNewCourtMapUrl(e.target.value)}
-                  className="h-10"
-                />
-              </div>
-              <Button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white-force font-bold cursor-pointer">
-                <Plus className="w-4 h-4 mr-2" />
-                Thêm sân
-              </Button>
-            </form>
-
-            {courts.length === 0 ? (
-              <p className="text-sm text-slate-400 text-center py-4">Chưa có sân nào. Dán link Google Maps của sân để thêm.</p>
-            ) : (
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Tên sân</TableHead>
-                    <TableHead className="hidden sm:table-cell">Bản đồ</TableHead>
-                    <TableHead className="text-center w-24">Hành động</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {courts.map(court => (
-                    <TableRow key={court.id}>
-                      <TableCell className="font-medium">{court.name}</TableCell>
-                      <TableCell className="hidden sm:table-cell">
-                        <a
-                          href={court.mapUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-xs text-teal-400 hover:text-teal-300"
-                        >
-                          Xem bản đồ <ExternalLink className="w-3 h-3" />
-                        </a>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center justify-center gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              if (!requireAdminPassword()) return;
-                              setDeletingCourtId(court.id);
-                            }}
-                            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer p-1.5"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            )}
-          </CardContent>
-        </Card>
-      )}
-
-      {showForm && (
+      {showForm ? (
+        /* Form view: full width when adding/editing */
         <Card>
           <CardHeader className="text-center sm:text-left">
             <div className="flex items-center justify-between gap-2">
@@ -912,111 +892,240 @@ export default function SessionCosts() {
             </form>
           </CardContent>
         </Card>
-      )}
+      ) : (
+        /* Dashboard view: top widgets + full width history table */
+        <div className="space-y-6">
+          {/* Top row: Stats and QR code panel side-by-side */}
+          <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-4 items-stretch">
+            {/* Left Card: Summary Stats and Quick Action Buttons */}
+            <Card className="border-teal-500/10 bg-gradient-to-br from-teal-500/[0.02] to-transparent flex flex-col justify-between p-4">
+              <div>
+                <CardTitle className="text-xs sm:text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5 pb-2 border-b border-white/5">
+                  <Activity className="w-3.5 h-3.5 text-teal-400" />
+                  Tổng quan chi phí
+                </CardTitle>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div className="bg-white/5 border border-white/5 rounded-xl p-2.5">
+                    <p className="text-[10px] text-slate-400 uppercase font-semibold">Tổng buổi đánh</p>
+                    <p className="text-base font-black text-white mt-0.5 tabular-nums">{sessionCosts.length}</p>
+                  </div>
+                  <div className="bg-white/5 border border-white/5 rounded-xl p-2.5">
+                    <p className="text-[10px] text-slate-400 uppercase font-semibold">Tổng tích lũy</p>
+                    <p className="text-base font-black text-teal-400 mt-0.5 tabular-nums">{formatVND(totalAllSessionsCost)}</p>
+                  </div>
+                </div>
+              </div>
 
-      <Card>
-        <CardHeader className="text-center sm:text-left">
-          <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white">LỊCH SỬ CHI PHÍ</CardTitle>
-          <CardDescription>Các buổi đánh đã ghi nhận chi phí</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {sortedSessions.length === 0 ? (
-            <p className="text-sm text-slate-400 text-center py-8">
-              Chưa có buổi đánh nào. Nhấn &quot;Thêm buổi đánh&quot; để bắt đầu.
-            </p>
-          ) : (
-            <div className="overflow-x-auto -mx-1 sm:mx-0">
-            <Table className="text-xs sm:text-sm min-w-0">
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="whitespace-nowrap px-2 sm:px-4 py-2 sm:py-3">Ngày</TableHead>
-                  <TableHead className="hidden md:table-cell whitespace-nowrap px-2 sm:px-4">Sân</TableHead>
-                  <TableHead className="text-right hidden sm:table-cell whitespace-nowrap px-2 sm:px-4">Tổng</TableHead>
-                  <TableHead className="text-center whitespace-nowrap px-2 sm:px-4 w-10 sm:w-auto">Người</TableHead>
-                  <TableHead className="text-right whitespace-nowrap px-2 sm:px-4">
-                    <span className="sm:hidden">Đ/người</span>
-                    <span className="hidden sm:inline">Mỗi người</span>
-                  </TableHead>
-                  <TableHead className="text-center whitespace-nowrap px-1 sm:px-4 w-14 sm:w-24">
-                    <span className="hidden sm:inline">Hành động</span>
-                  </TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {sortedSessions.map(session => {
-                  const normalized = normalizeCostBreakdown(session.costs);
-                  const total = getTotalCost(normalized);
-                  const count = session.participantIds.length;
-                  const each = count > 0 ? splitCostEqually(total, session.participantIds)[0]?.amount ?? 0 : 0;
-                  return (
-                    <TableRow
-                      key={session.id}
-                      role="button"
-                      tabIndex={0}
-                      title={`Xem chi tiết chi phí ngày ${formatSessionDate(session.date)}`}
-                      className="cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400"
-                      onClick={() => setViewingSession(session)}
-                      onKeyDown={e => {
-                        if (e.key === 'Enter' || e.key === ' ') {
-                          e.preventDefault();
-                          setViewingSession(session);
-                        }
-                      }}
-                    >
-                      <TableCell className="font-medium whitespace-nowrap px-2 sm:px-4 py-2 sm:py-3 tabular-nums">
-                        <span className="inline-flex items-center gap-1.5">
-                          <Eye className="w-3.5 h-3.5 text-teal-400 sm:hidden" />
-                          {formatSessionDate(session.date)}
-                        </span>
-                      </TableCell>
-                      <TableCell className="hidden md:table-cell text-slate-400 text-sm truncate max-w-[140px] px-2 sm:px-4">
-                        {getCourtName(session.courtId) || '—'}
-                      </TableCell>
-                      <TableCell className="text-right hidden sm:table-cell text-slate-300 whitespace-nowrap px-2 sm:px-4 tabular-nums">
-                        {formatVND(total)}
-                      </TableCell>
-                      <TableCell className="text-center whitespace-nowrap px-2 sm:px-4 tabular-nums">{count}</TableCell>
-                      <TableCell className="text-right font-semibold text-teal-400 whitespace-nowrap px-2 sm:px-4 tabular-nums">
-                        {formatVND(each)}
-                      </TableCell>
-                      <TableCell className="px-1 sm:px-4 py-2">
-                        <div className="flex items-center justify-center gap-0.5 sm:gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={e => {
-                              e.stopPropagation();
-                              openEditForm(session);
-                            }}
-                            className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 cursor-pointer p-1 sm:p-1.5"
-                            aria-label={`Sửa chi phí ngày ${formatSessionDate(session.date)}`}
-                          >
-                            <Pencil className="w-3.5 h-3.5" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={e => {
-                              e.stopPropagation();
-                              if (!requireAdminPassword()) return;
-                              setDeletingId(session.id);
-                            }}
-                            className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer p-1 sm:p-1.5"
-                            aria-label={`Xóa chi phí ngày ${formatSessionDate(session.date)}`}
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-            </div>
+              <div className="flex items-center gap-2 mt-4">
+                <Button
+                  variant="ghost"
+                  onClick={() => setShowCourtManager(v => !v)}
+                  className="flex-1 text-slate-300 hover:text-white border border-white/10 cursor-pointer h-9 text-xs"
+                >
+                  <MapPin className="w-3.5 h-3.5 mr-1.5" />
+                  {showCourtManager ? 'Ẩn quản lý' : 'Quản lý sân'}
+                </Button>
+                <Button
+                  onClick={openNewForm}
+                  className="flex-1 bg-teal-500 hover:bg-teal-600 text-white-force font-bold cursor-pointer h-9 text-xs"
+                >
+                  <Wallet className="w-3.5 h-3.5 mr-1.5" />
+                  Thêm buổi
+                </Button>
+              </div>
+            </Card>
+
+            {/* Right Card: QR Code sidebar */}
+            <PaymentQrPanel compact />
+          </div>
+
+          {/* Court Manager (rendered full-width below top row) */}
+          {showCourtManager && (
+            <Card>
+              <CardHeader className="text-center sm:text-left">
+                <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+                  <MapPin className="w-4 h-4 text-teal-400" />
+                  QUẢN LÝ CHUNG
+                </CardTitle>
+                <CardDescription className="text-center sm:text-left">Thêm sân bằng URL Google Maps</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <form onSubmit={handleAddCourt} className="space-y-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <Input
+                      placeholder="Tên sân (VD: Sân Cầu Lông ABC)"
+                      value={newCourtName}
+                      onChange={e => setNewCourtName(e.target.value)}
+                      className="h-10"
+                    />
+                    <Input
+                      placeholder="URL Google Maps (https://maps.google.com/...)"
+                      value={newCourtMapUrl}
+                      onChange={e => setNewCourtMapUrl(e.target.value)}
+                      className="h-10"
+                    />
+                  </div>
+                  <Button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white-force font-bold cursor-pointer">
+                    <Plus className="w-4 h-4 mr-2" />
+                    Thêm sân
+                  </Button>
+                </form>
+
+                {courts.length === 0 ? (
+                  <p className="text-sm text-slate-400 text-center py-4">Chưa có sân nào. Dán link Google Maps của sân để thêm.</p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tên sân</TableHead>
+                        <TableHead className="hidden sm:table-cell">Bản đồ</TableHead>
+                        <TableHead className="text-center w-24">Hành động</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {courts.map(court => (
+                        <TableRow key={court.id}>
+                          <TableCell className="font-medium">{court.name}</TableCell>
+                          <TableCell className="hidden sm:table-cell">
+                            <a
+                              href={court.mapUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="inline-flex items-center gap-1 text-xs text-teal-400 hover:text-teal-300"
+                            >
+                              Xem bản đồ <ExternalLink className="w-3 h-3" />
+                            </a>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  if (!requireAdminPassword()) return;
+                                  setDeletingCourtId(court.id);
+                                }}
+                                className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer p-1.5"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
           )}
-        </CardContent>
-      </Card>
+
+          {/* Lịch sử chi phí (rendered full-width below top row/court manager) */}
+          <Card>
+            <CardHeader className="text-center sm:text-left">
+              <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white">LỊCH SỬ CHI PHÍ</CardTitle>
+              <CardDescription>Các buổi đánh đã ghi nhận chi phí</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sortedSessions.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">
+                  Chưa có buổi đánh nào. Nhấn &quot;Thêm buổi đánh&quot; để bắt đầu.
+                </p>
+              ) : (
+                <div className="overflow-x-auto -mx-1 sm:mx-0">
+                  <Table className="text-xs sm:text-sm min-w-0">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap px-1.5 sm:px-2.5 py-2 sm:py-2.5">Ngày</TableHead>
+                        <TableHead className="hidden md:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Sân</TableHead>
+                        <TableHead className="text-right hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Tổng</TableHead>
+                        <TableHead className="text-center whitespace-nowrap px-1.5 sm:px-2.5 w-10 sm:w-auto">Người</TableHead>
+                        <TableHead className="text-right whitespace-nowrap px-1.5 sm:px-2.5">
+                          <span className="sm:hidden">Đ/người</span>
+                          <span className="hidden sm:inline">Mỗi người</span>
+                        </TableHead>
+                        <TableHead className="text-center whitespace-nowrap px-1 sm:px-2 w-14 sm:w-20">
+                          <span className="hidden sm:inline">Hành động</span>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedSessions.map(session => {
+                        const normalized = normalizeCostBreakdown(session.costs);
+                        const total = getTotalCost(normalized);
+                        const count = session.participantIds.length;
+                        const each = count > 0 ? splitCostEqually(total, session.participantIds)[0]?.amount ?? 0 : 0;
+                        return (
+                          <TableRow
+                            key={session.id}
+                            role="button"
+                            tabIndex={0}
+                            title={`Xem chi tiết chi phí ngày ${formatSessionDate(session.date)}`}
+                            className="cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400"
+                            onClick={() => setViewingSession(session)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                setViewingSession(session);
+                              }
+                            }}
+                          >
+                            <TableCell className="font-medium whitespace-nowrap px-1.5 sm:px-2.5 py-2 sm:py-2.5 tabular-nums">
+                              <span className="inline-flex items-center gap-1.5">
+                                <Eye className="w-3.5 h-3.5 text-teal-400 sm:hidden" />
+                                {formatSessionDate(session.date)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-slate-400 text-sm truncate max-w-[110px] px-1.5 sm:px-2.5">
+                              {getCourtName(session.courtId) || '—'}
+                            </TableCell>
+                            <TableCell className="text-right hidden sm:table-cell text-slate-300 whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">
+                              {formatVND(total)}
+                            </TableCell>
+                            <TableCell className="text-center whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">{count}</TableCell>
+                            <TableCell className="text-right font-semibold text-teal-400 whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">
+                              {formatVND(each)}
+                            </TableCell>
+                            <TableCell className="px-1 sm:px-2 py-1.5 sm:py-2">
+                              <div className="flex items-center justify-center gap-0.5 sm:gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    openEditForm(session);
+                                  }}
+                                  className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 cursor-pointer p-1 sm:p-1.5"
+                                  aria-label={`Sửa chi phí ngày ${formatSessionDate(session.date)}`}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    if (!requireAdminPassword()) return;
+                                    setDeletingId(session.id);
+                                  }}
+                                  className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer p-1 sm:p-1.5"
+                                  aria-label={`Xóa chi phí ngày ${formatSessionDate(session.date)}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      )}
 
       {deletingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">

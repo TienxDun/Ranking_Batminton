@@ -149,15 +149,15 @@ function PlayerDetailModal({
         style={mobileDialogStyle}
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative flex-shrink-0 bg-white border-b border-slate-200 p-4 pr-14 sm:p-5 sm:pr-14">
+        <div className="relative flex-shrink-0 bg-slate-900 border-b border-white/10 p-4 pr-14 sm:p-5 sm:pr-14">
           <div className="min-w-0">
             <div className="min-w-0">
               <div className="flex items-center gap-2 text-teal-600 mb-2">
                 <User className="w-4 h-4" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Hồ sơ năng lực</span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black text-slate-950 leading-tight truncate">{player.name}</h3>
-              <p className="text-xs text-slate-500 mt-1">
+              <h3 className="text-xl sm:text-2xl font-black text-white leading-tight truncate">{player.name}</h3>
+              <p className="text-xs text-slate-400 mt-1">
                 Hạng {rank} trong bộ lọc: {selectedWeekLabel}
               </p>
             </div>
@@ -166,7 +166,7 @@ function PlayerDetailModal({
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-3 top-3 z-20 text-slate-500 hover:bg-slate-100 hover:text-slate-950 cursor-pointer p-2"
+            className="absolute right-3 top-3 z-20 text-slate-400 hover:bg-white/5 hover:text-white cursor-pointer p-2"
             aria-label="Đóng popup"
           >
             <X className="w-4 h-4" />
@@ -436,10 +436,10 @@ export default function Dashboard() {
             const isSilver = isMain && player.displayRank === 2;
             const isBronze = isMain && player.displayRank === 3;
             
-            let rowClass = "hover:bg-white/5 transition-colors";
-            if (isGold) rowClass = "bg-amber-500/5 hover:bg-amber-500/10 transition-colors border-l-2 border-amber-500";
-            else if (isSilver) rowClass = "bg-slate-300/5 hover:bg-slate-300/10 transition-colors border-l-2 border-slate-400";
-            else if (isBronze) rowClass = "bg-amber-700/5 hover:bg-amber-700/10 transition-colors border-l-2 border-amber-700";
+            let rowClass = "row-normal";
+            if (isGold) rowClass = "row-gold";
+            else if (isSilver) rowClass = "row-silver";
+            else if (isBronze) rowClass = "row-bronze";
 
             return (
               <TableRow
@@ -457,14 +457,14 @@ export default function Dashboard() {
                 title={`Xem chi tiết ${player.name}`}
               >
                 <TableCell className="w-14 min-w-[3.5rem] max-w-[3.5rem] text-center font-medium sticky-rank whitespace-nowrap px-2">
-                  {isGold ? <div className="flex items-center justify-center gap-1 text-amber-400 font-bold"><Trophy className="w-4 h-4 text-amber-400 shrink-0" /> 01</div> :
-                   isSilver ? <div className="flex items-center justify-center gap-1 text-slate-300 font-bold"><Medal className="w-4 h-4 text-slate-400 shrink-0" /> 02</div> :
-                   isBronze ? <div className="flex items-center justify-center gap-1 text-amber-600 font-bold"><Medal className="w-4 h-4 text-amber-700 shrink-0" /> 03</div> :
+                  {isGold ? <div className="flex items-center justify-center gap-1 text-amber-400 font-bold"><Trophy className="w-4.5 h-4.5 text-amber-400 shrink-0" /> 01</div> :
+                   isSilver ? <div className="flex items-center justify-center gap-1 text-slate-300 font-bold"><Medal className="w-4.5 h-4.5 text-slate-400 shrink-0" /> 02</div> :
+                   isBronze ? <div className="flex items-center justify-center gap-1 text-amber-600 font-bold"><Medal className="w-4.5 h-4.5 text-amber-750 shrink-0" /> 03</div> :
                    String(player.displayRank).padStart(2, '0')}
                 </TableCell>
                 <TableCell className="font-semibold text-white sticky-name min-w-[110px] whitespace-nowrap">{player.name}</TableCell>
                 <TableCell className="text-center whitespace-nowrap">
-                  <span className="px-2 py-1 rounded bg-teal-500/10 text-teal-300 font-bold font-mono border border-teal-500/10">
+                  <span className="px-2 py-1 rounded bg-teal-500/10 text-teal-300 font-bold font-mono border border-teal-500/10 badge-elo">
                     {player.rating}
                   </span>
                 </TableCell>
