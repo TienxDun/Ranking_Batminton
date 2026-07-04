@@ -124,7 +124,7 @@ export default function App() {
       {/* Background Mesh Gradients */}
       <div className="mesh-bg" />
 
-      <header className="glass-header sticky top-0 z-10 shadow-sm">
+      <header className="glass-header sticky top-0 z-10 shadow-sm pt-safe">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between gap-2 md:gap-3 lg:gap-4">
           <h1 className="font-bold text-base sm:text-lg lg:text-xl tracking-tight flex items-center gap-2 lg:gap-3 flex-shrink-0">
             <div className="relative w-8 h-8 lg:w-10 lg:h-10 rounded-lg lg:rounded-xl bg-slate-950/40 border border-white/10 flex items-center justify-center shadow-lg shadow-teal-500/5 group hover:border-teal-500/30 transition-all duration-300">
