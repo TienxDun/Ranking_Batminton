@@ -82,6 +82,20 @@ input[type="time"]::-webkit-date-and-time-value {
   transition: background-color 0.3s ease, border-color 0.3s ease;
 }
 
+.modal-surface {
+  background: rgba(15, 23, 42, 0.96);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.light .modal-surface {
+  background: rgba(248, 250, 252, 0.98);
+  border-color: rgba(15, 23, 42, 0.12);
+}
+
 .glass-header {
   background: var(--glass-header);
   backdrop-filter: blur(24px);
@@ -470,7 +484,10 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
   color: #ffffff !important;
 }
 
-.light .text-white-force {
+.text-white-force,
+.hover\:text-white-force:hover,
+.light .text-white-force,
+.light .hover\:text-white-force:hover {
   color: #ffffff !important;
 }
 

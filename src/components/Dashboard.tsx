@@ -145,19 +145,19 @@ function PlayerDetailModal({
       onClick={onClose}
     >
       <div
-        className="glass fixed flex max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden shadow-2xl border border-white/10 sm:static sm:h-[calc(100dvh-5.5rem)] sm:max-h-[760px] sm:w-full sm:max-w-5xl"
+        className="modal-surface fixed flex max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden shadow-2xl border border-white/10 sm:static sm:h-[calc(100dvh-5.5rem)] sm:max-h-[760px] sm:w-full sm:max-w-5xl"
         style={mobileDialogStyle}
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative flex-shrink-0 bg-slate-950/90 backdrop-blur-xl border-b border-white/10 p-4 pr-14 sm:p-5 sm:pr-14">
+        <div className="relative flex-shrink-0 bg-white border-b border-slate-200 p-4 pr-14 sm:p-5 sm:pr-14">
           <div className="min-w-0">
             <div className="min-w-0">
-              <div className="flex items-center gap-2 text-teal-400 mb-2">
+              <div className="flex items-center gap-2 text-teal-600 mb-2">
                 <User className="w-4 h-4" />
                 <span className="text-[10px] font-bold uppercase tracking-wider">Hồ sơ năng lực</span>
               </div>
-              <h3 className="text-xl sm:text-2xl font-black text-white leading-tight truncate">{player.name}</h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <h3 className="text-xl sm:text-2xl font-black text-slate-950 leading-tight truncate">{player.name}</h3>
+              <p className="text-xs text-slate-500 mt-1">
                 Hạng {rank} trong bộ lọc: {selectedWeekLabel}
               </p>
             </div>
@@ -166,7 +166,7 @@ function PlayerDetailModal({
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-3 top-3 z-20 text-slate-400 hover:text-white cursor-pointer p-2"
+            className="absolute right-3 top-3 z-20 text-slate-500 hover:bg-slate-100 hover:text-slate-950 cursor-pointer p-2"
             aria-label="Đóng popup"
           >
             <X className="w-4 h-4" />
@@ -209,18 +209,30 @@ function PlayerDetailModal({
                     {formatDelta(totalDelta)}
                   </span>
                 </div>
-                <div className="flex items-center justify-between gap-3">
+                <button
+                  type="button"
+                  disabled={!biggestGain}
+                  onClick={() => biggestGain && setSelectedMatch(biggestGain.match)}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg text-left transition-colors enabled:cursor-pointer enabled:hover:bg-white/5 disabled:cursor-default"
+                  title={biggestGain ? 'Xem chi tiết trận tăng mạnh nhất' : undefined}
+                >
                   <span className="text-slate-400">Trận tăng mạnh nhất</span>
                   <span className="font-bold text-emerald-400 tabular-nums">
                     {biggestGain ? formatDelta(biggestGain.delta) : 'N/A'}
                   </span>
-                </div>
-                <div className="flex items-center justify-between gap-3">
+                </button>
+                <button
+                  type="button"
+                  disabled={!biggestLoss}
+                  onClick={() => biggestLoss && setSelectedMatch(biggestLoss.match)}
+                  className="flex w-full items-center justify-between gap-3 rounded-lg text-left transition-colors enabled:cursor-pointer enabled:hover:bg-white/5 disabled:cursor-default"
+                  title={biggestLoss ? 'Xem chi tiết trận giảm mạnh nhất' : undefined}
+                >
                   <span className="text-slate-400">Trận giảm mạnh nhất</span>
                   <span className="font-bold text-rose-400 tabular-nums">
                     {biggestLoss ? biggestLoss.delta : 'N/A'}
                   </span>
-                </div>
+                </button>
                 <p className="text-xs text-slate-500 leading-relaxed pt-2 border-t border-white/5">
                   Elo đổi theo sức mạnh trung bình hai đội, kết quả thắng/thua và độ chênh điểm. Thắng đội mạnh hoặc thắng cách biệt sẽ tăng nhiều hơn.
                 </p>

@@ -70,26 +70,29 @@ export function MatchDetailModal({
       role="dialog"
       aria-modal="true"
       aria-label={`Chi tiết trận ${team1Label} gặp ${team2Label}`}
-      onClick={onClose}
+      onClick={event => {
+        event.stopPropagation();
+        onClose();
+      }}
     >
       <div
-        className="glass flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden border border-white/10 shadow-2xl"
+        className="modal-surface flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden border border-white/10 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative flex-shrink-0 border-b border-white/10 bg-slate-950/90 p-4 pr-14 backdrop-blur-xl sm:p-5 sm:pr-14">
-          <div className="mb-2 flex items-center gap-2 text-teal-400">
+        <div className="relative flex-shrink-0 border-b border-slate-200 bg-white p-4 pr-14 sm:p-5 sm:pr-14">
+          <div className="mb-2 flex items-center gap-2 text-teal-600">
             <Eye className="w-4 h-4" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Chi tiết trận đấu</span>
           </div>
-          <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
+          <h3 className="text-lg sm:text-xl font-black text-slate-950 leading-tight">
             {team1Label} vs {team2Label}
           </h3>
-          <p className="mt-1 text-xs text-slate-400">{dateTime.date} lúc {dateTime.time}</p>
+          <p className="mt-1 text-xs text-slate-500">{dateTime.date} lúc {dateTime.time}</p>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-3 top-3 z-20 cursor-pointer p-2 text-slate-400 hover:text-white"
+            className="absolute right-3 top-3 z-20 cursor-pointer p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-950"
             aria-label="Đóng chi tiết trận đấu"
           >
             <X className="w-4 h-4" />

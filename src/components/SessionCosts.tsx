@@ -278,23 +278,23 @@ function SessionCostDetailModal({
       onClick={onClose}
     >
       <div
-        className="glass flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden border border-white/10 shadow-2xl"
+        className="modal-surface flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden border border-white/10 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative flex-shrink-0 border-b border-white/10 bg-slate-950/90 p-4 pr-14 backdrop-blur-xl sm:p-5 sm:pr-14">
-          <div className="flex items-center gap-2 text-teal-400 mb-2">
+        <div className="relative flex-shrink-0 border-b border-slate-200 bg-white p-4 pr-14 sm:p-5 sm:pr-14">
+          <div className="flex items-center gap-2 text-teal-600 mb-2">
             <Wallet className="w-4 h-4" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Chi tiết chi phí</span>
           </div>
-          <h3 className="text-xl font-black text-white">{formatSessionDate(session.date)}</h3>
-          <p className="mt-1 text-xs text-slate-400">
+          <h3 className="text-xl font-black text-slate-950">{formatSessionDate(session.date)}</h3>
+          <p className="mt-1 text-xs text-slate-500">
             {getCourtName(session.courtId) || 'Chưa chọn sân'}
           </p>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-3 top-3 z-20 cursor-pointer p-2 text-slate-400 hover:text-white"
+            className="absolute right-3 top-3 z-20 cursor-pointer p-2 text-slate-500 hover:bg-slate-100 hover:text-slate-950"
             aria-label="Đóng chi tiết chi phí"
           >
             <X className="w-4 h-4" />

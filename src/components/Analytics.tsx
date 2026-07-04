@@ -366,23 +366,23 @@ function InsightDetailModal({
       onClick={onClose}
     >
       <div
-        className="glass fixed flex max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden shadow-2xl border border-white/10 sm:static sm:h-[calc(100dvh-5.5rem)] sm:max-h-[720px] sm:w-full sm:max-w-4xl"
+        className="modal-surface fixed flex max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden shadow-2xl border border-white/10 sm:static sm:h-[calc(100dvh-5.5rem)] sm:max-h-[720px] sm:w-full sm:max-w-4xl"
         style={mobileDialogStyle}
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative flex-shrink-0 bg-slate-950/90 backdrop-blur-xl border-b border-white/10 p-4 pr-14 sm:p-5 sm:pr-14">
+        <div className="relative flex-shrink-0 bg-white border-b border-slate-200 p-4 pr-14 sm:p-5 sm:pr-14">
           <div className="min-w-0">
             <div className="min-w-0">
-              <p className="text-[10px] text-teal-400 font-bold uppercase tracking-wider mb-2">Giải thích thống kê</p>
-              <h3 className="text-lg sm:text-xl font-black text-white">{detail.title}</h3>
-              <p className="text-xs text-slate-400 mt-1 leading-relaxed">{detail.subtitle}</p>
+              <p className="text-[10px] text-teal-600 font-bold uppercase tracking-wider mb-2">Giải thích thống kê</p>
+              <h3 className="text-lg sm:text-xl font-black text-slate-950">{detail.title}</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">{detail.subtitle}</p>
             </div>
           </div>
           <Button
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-3 top-3 z-20 text-slate-400 hover:text-white cursor-pointer p-2"
+            className="absolute right-3 top-3 z-20 text-slate-500 hover:bg-slate-100 hover:text-slate-950 cursor-pointer p-2"
             aria-label="Đóng popup"
           >
             <X className="w-4 h-4" />
