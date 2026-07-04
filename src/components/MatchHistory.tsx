@@ -1,21 +1,212 @@
-import React, { useState, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { format, parseISO } from 'date-fns';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
-import { Trash2, AlertTriangle, X, Calendar, Pencil } from 'lucide-react';
+import { Trash2, AlertTriangle, X, Calendar, Pencil, Eye, Trophy, Hash } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import { Select } from './ui/select';
 import { Input } from './ui/input';
-import { Match } from '../types';
+import { Match, Player } from '../types';
 import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
+import { requireAdminPassword } from '../utils/adminAuth';
+import { calculatePlayerEloBreakdown } from '../utils/calculations';
+
+function formatMatchDateTime(date: string) {
+  const parsed = parseISO(date);
+  const hasTime = date.includes('T') || date.includes(':');
+  return {
+    date: format(parsed, 'dd/MM/yyyy'),
+    time: hasTime ? format(parsed, 'HH:mm') : 'Không ghi giờ',
+  };
+}
+
+export function MatchDetailModal({
+  match,
+  matches,
+  players,
+  getPlayerName,
+  onClose,
+}: {
+  match: Match;
+  matches: Match[];
+  players: Player[];
+  getPlayerName: (id: string) => string;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  const team1Label = `${getPlayerName(match.team1[0])} - ${getPlayerName(match.team1[1])}`;
+  const team2Label = `${getPlayerName(match.team2[0])} - ${getPlayerName(match.team2[1])}`;
+  const team1Win = match.score1 > match.score2;
+  const team2Win = match.score2 > match.score1;
+  const winnerLabel = team1Win ? team1Label : team2Win ? team2Label : 'Hòa';
+  const scoreDiff = Math.abs(match.score1 - match.score2);
+  const dateTime = formatMatchDateTime(match.date);
+  const eloImpacts = [...match.team1, ...match.team2].map(playerId => {
+    const impact = calculatePlayerEloBreakdown(players, matches, playerId)
+      .find(item => item.match.id === match.id);
+
+    return {
+      playerId,
+      team: match.team1.includes(playerId) ? 'Đội 1' : 'Đội 2',
+      impact,
+    };
+  });
+  const team1EloChange = eloImpacts.find(item => item.playerId === match.team1[0])?.impact?.delta ?? 0;
+  const team2EloChange = eloImpacts.find(item => item.playerId === match.team2[0])?.impact?.delta ?? 0;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[110] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-md sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Chi tiết trận ${team1Label} gặp ${team2Label}`}
+      onClick={onClose}
+    >
+      <div
+        className="glass flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden border border-white/10 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="relative flex-shrink-0 border-b border-white/10 bg-slate-950/90 p-4 pr-14 backdrop-blur-xl sm:p-5 sm:pr-14">
+          <div className="mb-2 flex items-center gap-2 text-teal-400">
+            <Eye className="w-4 h-4" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Chi tiết trận đấu</span>
+          </div>
+          <h3 className="text-lg sm:text-xl font-black text-white leading-tight">
+            {team1Label} vs {team2Label}
+          </h3>
+          <p className="mt-1 text-xs text-slate-400">{dateTime.date} lúc {dateTime.time}</p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="absolute right-3 top-3 z-20 cursor-pointer p-2 text-slate-400 hover:text-white"
+            aria-label="Đóng chi tiết trận đấu"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-hide p-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 sm:gap-3">
+            {[
+              ['Tỉ số', `${match.score1} - ${match.score2}`, 'text-white'],
+              ['Chênh lệch', `${scoreDiff} điểm`, scoreDiff > 0 ? 'text-teal-400' : 'text-slate-300'],
+              ['Kết quả', winnerLabel, team1Win || team2Win ? 'text-emerald-400' : 'text-slate-300'],
+            ].map(([label, value, color]) => (
+              <div key={label} className="min-w-0 rounded-xl border border-white/5 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                <p className={`mt-1 truncate text-sm font-black tabular-nums ${color}`} title={value}>
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-2 sm:gap-3 items-stretch">
+            <div className={`rounded-xl border p-3 sm:p-4 ${team1Win ? 'border-teal-500/30 bg-teal-500/10' : 'border-white/5 bg-white/5'}`}>
+              <div className="mb-2 sm:mb-3 flex items-center justify-between gap-2 sm:gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Đội 1</p>
+                {team1Win && <Trophy className="w-4 h-4 text-amber-400" />}
+              </div>
+              <p className="text-sm sm:text-lg font-black text-white leading-tight break-words">{team1Label}</p>
+              <p className="mt-2 sm:mt-3 font-mono text-2xl sm:text-3xl font-black text-teal-400">{match.score1}</p>
+            </div>
+
+            <div className="flex items-center justify-center px-1 sm:px-2 text-[10px] sm:text-xs font-black uppercase tracking-wider text-slate-500">
+              VS
+            </div>
+
+            <div className={`rounded-xl border p-3 sm:p-4 ${team2Win ? 'border-indigo-500/30 bg-indigo-500/10' : 'border-white/5 bg-white/5'}`}>
+              <div className="mb-2 sm:mb-3 flex items-center justify-between gap-2 sm:gap-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Đội 2</p>
+                {team2Win && <Trophy className="w-4 h-4 text-amber-400" />}
+              </div>
+              <p className="text-sm sm:text-lg font-black text-white leading-tight break-words">{team2Label}</p>
+              <p className="mt-2 sm:mt-3 font-mono text-2xl sm:text-3xl font-black text-indigo-400">{match.score2}</p>
+            </div>
+          </div>
+
+          <Card className="border-amber-500/15">
+            <CardHeader className="p-3 pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Hash className="w-4 h-4 text-amber-400" />
+                Ảnh hưởng Elo
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 space-y-3">
+              <div className="grid grid-cols-2 gap-2">
+                <div className="rounded-xl border border-teal-500/15 bg-teal-500/10 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Đội 1</p>
+                  <p className={`mt-1 text-lg font-black tabular-nums ${team1EloChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {team1EloChange >= 0 ? '+' : ''}{team1EloChange}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-indigo-500/15 bg-indigo-500/10 p-3">
+                  <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Đội 2</p>
+                  <p className={`mt-1 text-lg font-black tabular-nums ${team2EloChange >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                    {team2EloChange >= 0 ? '+' : ''}{team2EloChange}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                {eloImpacts.map(({ playerId, team, impact }) => (
+                  <div key={playerId} className="grid grid-cols-[1fr_auto] gap-3 rounded-xl border border-white/5 bg-slate-950/30 p-3 text-sm">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-100 truncate">{getPlayerName(playerId)}</p>
+                      <p className="text-xs text-slate-500">{team}</p>
+                    </div>
+                    {impact ? (
+                      <div className="text-right">
+                        <p className="font-mono font-bold text-slate-200 whitespace-nowrap">
+                          {impact.ratingBefore} → <span className="text-white">{impact.ratingAfter}</span>
+                        </p>
+                        <p className={`text-xs font-black tabular-nums ${impact.delta >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+                          {impact.delta >= 0 ? '+' : ''}{impact.delta}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="self-center text-xs text-slate-500">Không có dữ liệu</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              <p className="text-xs leading-relaxed text-slate-500">
+                Elo được tính theo sức mạnh trung bình hai đội, kết quả thắng/thua và độ chênh điểm của trận.
+              </p>
+            </CardContent>
+          </Card>
+
+          {match.notes && (
+            <div className="rounded-xl border border-white/5 bg-white/5 p-3 text-sm text-slate-300">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Ghi chú</p>
+              {match.notes}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 export default function MatchHistory() {
-  const { matches, players, deleteMatch, clearMatches, updateMatch, selectedWeek, setSelectedWeek } = useStore();
+  const { matches, players, deleteMatch, updateMatch, selectedWeek, setSelectedWeek } = useStore();
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
   const weekOptions = useMemo(() => getWeekOptions(matches), [matches]);
 
@@ -59,6 +250,7 @@ export default function MatchHistory() {
   const currentMatches = filteredMatches.slice((page - 1) * itemsPerPage, page * itemsPerPage);
 
   const handleDeleteClick = (id: string) => {
+    if (!requireAdminPassword()) return;
     setDeletingId(id);
   };
 
@@ -76,6 +268,7 @@ export default function MatchHistory() {
   };
 
   const handleEditClick = (match: Match) => {
+    if (!requireAdminPassword()) return;
     setEditingMatch(match);
     let formattedDate = match.date;
     if (!formattedDate.includes('T')) {
@@ -170,7 +363,7 @@ export default function MatchHistory() {
             </div>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent key={`${selectedWeek}-${selectedPlayerId}`} className="filter-refresh">
           {/* Desktop Table View */}
           <div className="hidden md:block">
             <Table>
@@ -185,7 +378,20 @@ export default function MatchHistory() {
               </TableHeader>
               <TableBody>
                 {currentMatches.map(m => (
-                  <TableRow key={m.id}>
+                  <TableRow
+                    key={m.id}
+                    role="button"
+                    tabIndex={0}
+                    title="Xem chi tiết trận đấu"
+                    className="cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400"
+                    onClick={() => setSelectedMatch(m)}
+                    onKeyDown={e => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        setSelectedMatch(m);
+                      }
+                    }}
+                  >
                     <TableCell className="sticky-date min-w-[110px] w-[110px] whitespace-nowrap text-slate-300 text-xs font-mono">
                       <div className="flex flex-col">
                         <span>{format(parseISO(m.date), 'dd/MM/yyyy')}</span>
@@ -216,10 +422,28 @@ export default function MatchHistory() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1.5">
-                        <Button variant="ghost" size="icon" onClick={() => handleEditClick(m)} className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 h-8 w-8 rounded-lg cursor-pointer">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleEditClick(m);
+                          }}
+                          className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 h-8 w-8 rounded-lg cursor-pointer"
+                          aria-label="Sửa trận đấu"
+                        >
                           <Pencil className="w-4 h-4" />
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDeleteClick(m.id)} className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-8 w-8 rounded-lg cursor-pointer">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={e => {
+                            e.stopPropagation();
+                            handleDeleteClick(m.id);
+                          }}
+                          className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-8 w-8 rounded-lg cursor-pointer"
+                          aria-label="Xóa trận đấu"
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
@@ -245,7 +469,20 @@ export default function MatchHistory() {
               const isTeam1Win = m.score1 > m.score2;
               const isTeam2Win = m.score2 > m.score1;
               return (
-                <div key={m.id} className="px-3 py-3 bg-slate-900/30 border border-white/5 rounded-xl space-y-3 hover:bg-slate-900/50 transition-all duration-200">
+                <div
+                  key={m.id}
+                  role="button"
+                  tabIndex={0}
+                  title="Xem chi tiết trận đấu"
+                  className="px-3 py-3 bg-slate-900/30 border border-white/5 rounded-xl space-y-3 hover:bg-slate-900/50 transition-all duration-200 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400"
+                  onClick={() => setSelectedMatch(m)}
+                  onKeyDown={e => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setSelectedMatch(m);
+                    }
+                  }}
+                >
                   {/* Top: Date and Delete button */}
                   <div className="flex items-center justify-between border-b border-white/5 pb-2">
                     <div className="flex items-center gap-1.5 text-xs font-mono text-slate-400">
@@ -261,16 +498,24 @@ export default function MatchHistory() {
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => handleEditClick(m)} 
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleEditClick(m);
+                        }} 
                         className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 h-7 w-7 rounded-lg cursor-pointer"
+                        aria-label="Sửa trận đấu"
                       >
                         <Pencil className="w-3.5 h-3.5" />
                       </Button>
                       <Button 
                         variant="ghost" 
                         size="icon" 
-                        onClick={() => handleDeleteClick(m.id)} 
+                        onClick={e => {
+                          e.stopPropagation();
+                          handleDeleteClick(m.id);
+                        }} 
                         className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 h-7 w-7 rounded-lg cursor-pointer"
+                        aria-label="Xóa trận đấu"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </Button>
@@ -364,6 +609,16 @@ export default function MatchHistory() {
           </div>
         </div>,
         document.body
+      )}
+
+      {selectedMatch && (
+        <MatchDetailModal
+          match={selectedMatch}
+          matches={matches}
+          players={players}
+          getPlayerName={getPlayerName}
+          onClose={() => setSelectedMatch(null)}
+        />
       )}
 
 

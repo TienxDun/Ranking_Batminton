@@ -341,6 +341,32 @@ input[type="time"]::-webkit-date-and-time-value {
   animation: tabFadeIn 0.35s cubic-bezier(0.215, 0.61, 0.355, 1) forwards;
 }
 
+@keyframes filterRefreshIn {
+  0% {
+    opacity: 0.62;
+    transform: translateY(6px) scale(0.998);
+  }
+  58% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.filter-refresh {
+  animation: filterRefreshIn 0.28s cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tab-content-active,
+  .filter-refresh {
+    animation: none !important;
+  }
+}
+
 @keyframes slideUpBanner {
   from {
     opacity: 0;

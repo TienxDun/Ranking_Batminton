@@ -1,4 +1,5 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { CSSProperties, useState, useMemo, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store';
 import { calculateLeaderboard, calculateEloHistory } from '../utils/calculations';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
@@ -15,10 +16,13 @@ import {
   Bar,
   Cell
 } from 'recharts';
-import { Trophy, Users, Calendar, Award, Flame, Zap, BarChart2, Swords, Puzzle } from 'lucide-react';
+import { Trophy, Users, Calendar, Award, Flame, Zap, BarChart2, Swords, Puzzle, X } from 'lucide-react';
 import { Select } from './ui/select';
 import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
 import { parseISO } from 'date-fns';
+import { Button } from './ui/button';
+import { Match } from '../types';
+import { useVisualViewportRect } from '../hooks/useVisualViewportRect';
 
 const PLAYER_COLORS: Record<string, string> = {
   'Khoa': '#2dd4bf',   // Teal
@@ -43,6 +47,114 @@ interface DuoStat {
   total: number;
   wins: number;
   winRate: number;
+}
+
+type InsightDetail = 'active' | 'streak' | 'duo';
+
+function getMatchTime(date: string): number {
+  try {
+    return parseISO(date).getTime();
+  } catch {
+    return 0;
+  }
+}
+
+function formatMatchDate(date: string): string {
+  try {
+    const parsed = parseISO(date);
+    if (Number.isNaN(parsed.getTime())) return date;
+
+    const day = String(parsed.getDate()).padStart(2, '0');
+    const month = String(parsed.getMonth() + 1).padStart(2, '0');
+    const year = parsed.getFullYear();
+    const hasTime = date.includes('T') || date.includes(':');
+    const time = hasTime
+      ? ` ${String(parsed.getHours()).padStart(2, '0')}:${String(parsed.getMinutes()).padStart(2, '0')}`
+      : '';
+
+    return `${day}/${month}/${year}${time}`;
+  } catch {
+    return date;
+  }
+}
+
+function getTeamLabel(ids: [string, string], getPlayerName: (id: string) => string): string {
+  return `${getPlayerName(ids[0])} - ${getPlayerName(ids[1])}`;
+}
+
+function getMatchResultLabel(match: Match, playerId?: string): { text: string; className: string } {
+  if (match.score1 === match.score2) {
+    return { text: 'Hòa', className: 'text-slate-400' };
+  }
+
+  if (!playerId) {
+    return match.score1 > match.score2
+      ? { text: 'Đội 1 thắng', className: 'text-emerald-400' }
+      : { text: 'Đội 2 thắng', className: 'text-emerald-400' };
+  }
+
+  const isTeam1 = match.team1.includes(playerId);
+  const isWin = (isTeam1 && match.score1 > match.score2) || (!isTeam1 && match.score2 > match.score1);
+  return isWin
+    ? { text: 'Thắng', className: 'text-emerald-400' }
+    : { text: 'Thua', className: 'text-rose-400' };
+}
+
+function getLongestWinStreakMatches(matches: Match[], playerId: string): Match[] {
+  const chronologicalMatches = [...matches].reverse();
+  let current: Match[] = [];
+  let best: Match[] = [];
+
+  chronologicalMatches.forEach(match => {
+    const isTeam1 = match.team1.includes(playerId);
+    const isTeam2 = match.team2.includes(playerId);
+    if (!isTeam1 && !isTeam2) return;
+
+    const isWin = (isTeam1 && match.score1 > match.score2) || (isTeam2 && match.score2 > match.score1);
+    if (isWin) {
+      current = [...current, match];
+      if (current.length > best.length) {
+        best = current;
+      }
+    } else {
+      current = [];
+    }
+  });
+
+  return [...best].reverse();
+}
+
+function isDuoMatch(match: Match, duoIds: string[]): boolean {
+  return duoIds.length === 2 && (
+    duoIds.every(id => match.team1.includes(id)) ||
+    duoIds.every(id => match.team2.includes(id))
+  );
+}
+
+function isDuoWin(match: Match, duoIds: string[]): boolean {
+  const isTeam1 = duoIds.every(id => match.team1.includes(id));
+  const isTeam2 = duoIds.every(id => match.team2.includes(id));
+  return (isTeam1 && match.score1 > match.score2) || (isTeam2 && match.score2 > match.score1);
+}
+
+function SummaryValue({ label, value }: { label: string; value: string }) {
+  if (label === 'Khoảng thời gian' && value.includes(' → ')) {
+    const [from, to] = value.split(' → ');
+
+    return (
+      <div className="mt-2 space-y-2 sm:space-y-0">
+        <p className="hidden sm:block text-base font-black text-white leading-snug">{value}</p>
+        <div className="grid grid-cols-[34px_1fr] gap-x-2 gap-y-1 sm:hidden">
+          <span className="text-[10px] font-bold uppercase tracking-wider text-teal-400">Từ</span>
+          <span className="text-sm font-black text-white leading-tight tabular-nums">{from}</span>
+          <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-400">Đến</span>
+          <span className="text-sm font-black text-white leading-tight tabular-nums">{to}</span>
+        </div>
+      </div>
+    );
+  }
+
+  return <p className="text-base font-black text-white mt-1 leading-snug break-words">{value}</p>;
 }
 
 // ----------------------------------------------------
@@ -117,16 +229,258 @@ const ActivityTooltip = ({ active, payload, theme }: any) => {
   return null;
 };
 
+function InsightDetailModal({
+  type,
+  insights,
+  filteredMatches,
+  players,
+  selectedWeekLabel,
+  onClose,
+}: {
+  type: InsightDetail;
+  insights: {
+    activePlayer: { id: string; name: string; matches: number } | null;
+    bestStreak: { id: string; name: string; streak: number } | null;
+    bestDuo: { ids: string; names: string; winRate: number; total: number; wins: number } | null;
+  };
+  filteredMatches: Match[];
+  players: { id: string; name: string }[];
+  selectedWeekLabel: string;
+  onClose: () => void;
+}) {
+  const viewportRect = useVisualViewportRect();
+  const isMobileViewport = viewportRect.width < 640;
+
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    const previousPosition = document.body.style.position;
+    const previousTop = document.body.style.top;
+    const previousWidth = document.body.style.width;
+    const scrollY = window.scrollY;
+
+    document.body.style.overflow = 'hidden';
+    document.body.style.position = 'fixed';
+    document.body.style.top = `-${scrollY}px`;
+    document.body.style.width = '100%';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.body.style.position = previousPosition;
+      document.body.style.top = previousTop;
+      document.body.style.width = previousWidth;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
+  const getPlayerName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
+
+  const detail = useMemo(() => {
+    if (type === 'active' && insights.activePlayer) {
+      const playerId = insights.activePlayer.id;
+      const matches = filteredMatches.filter(m => m.team1.includes(playerId) || m.team2.includes(playerId));
+      const wins = matches.filter(m => {
+        const result = getMatchResultLabel(m, playerId);
+        return result.text === 'Thắng';
+      }).length;
+
+      return {
+        title: 'Cày ải nhiều nhất',
+        subtitle: `${insights.activePlayer.name} có số trận tham gia cao nhất trong bộ lọc ${selectedWeekLabel}.`,
+        summary: [
+          ['Người chơi', insights.activePlayer.name],
+          ['Số trận', `${matches.length}`],
+          ['Thắng / thua', `${wins} / ${matches.length - wins}`],
+        ],
+        explanation: 'Chỉ số này đếm số trận mà người chơi xuất hiện ở một trong hai đội trong bộ lọc thời gian hiện tại.',
+        matches,
+        playerId,
+        duoIds: null as string[] | null,
+      };
+    }
+
+    if (type === 'streak' && insights.bestStreak) {
+      const playerId = insights.bestStreak.id;
+      const matches = getLongestWinStreakMatches(filteredMatches, playerId);
+
+      return {
+        title: 'Chuỗi thắng dài nhất',
+        subtitle: `${insights.bestStreak.name} có chuỗi thắng dài nhất trong bộ lọc ${selectedWeekLabel}.`,
+        summary: [
+          ['Người chơi', insights.bestStreak.name],
+          ['Chuỗi thắng', `${matches.length} trận`],
+          ['Khoảng thời gian', matches.length > 0 ? `${formatMatchDate(matches[matches.length - 1].date)} → ${formatMatchDate(matches[0].date)}` : 'N/A'],
+        ],
+        explanation: 'Chỉ số này duyệt các trận theo thứ tự thời gian và lấy đoạn thắng liên tiếp dài nhất của từng người. Trận thua sẽ ngắt chuỗi.',
+        matches,
+        playerId,
+        duoIds: null as string[] | null,
+      };
+    }
+
+    if (type === 'duo' && insights.bestDuo) {
+      const duoIds = insights.bestDuo.ids.split('_');
+      const matches = filteredMatches.filter(m => isDuoMatch(m, duoIds));
+      const wins = matches.filter(m => isDuoWin(m, duoIds)).length;
+      const winRate = matches.length > 0 ? (wins / matches.length) * 100 : 0;
+
+      return {
+        title: 'Cặp bài trùng nhất',
+        subtitle: `${insights.bestDuo.names} có tỉ lệ thắng tốt nhất trong nhóm cặp đủ điều kiện.`,
+        summary: [
+          ['Cặp đôi', insights.bestDuo.names],
+          ['Thắng / trận', `${wins} / ${matches.length}`],
+          ['Tỉ lệ thắng', `${winRate.toFixed(0)}%`],
+        ],
+        explanation: 'Chỉ số này gom các cặp từng đứng cùng đội, ưu tiên cặp có từ 2 trận trở lên nếu có dữ liệu, rồi xếp theo tỉ lệ thắng và số trận.',
+        matches,
+        playerId: undefined,
+        duoIds,
+      };
+    }
+
+    return null;
+  }, [filteredMatches, insights, selectedWeekLabel, type]);
+
+  if (!detail) return null;
+  const mobileOverlayStyle: CSSProperties | undefined = isMobileViewport ? {
+    top: viewportRect.offsetTop,
+    left: viewportRect.offsetLeft,
+    width: viewportRect.width,
+    height: viewportRect.height,
+  } : undefined;
+  const mobileDialogStyle: CSSProperties | undefined = isMobileViewport ? {
+    top: viewportRect.offsetTop + viewportRect.height / 2,
+    left: viewportRect.offsetLeft + viewportRect.width / 2,
+    width: Math.max(240, viewportRect.width - 24),
+    height: Math.max(240, viewportRect.height - 24),
+    transform: 'translate(-50%, -50%)',
+  } : undefined;
+
+  return createPortal(
+    <div
+      className="fixed z-[100] overflow-hidden overscroll-contain bg-slate-950/75 backdrop-blur-md sm:inset-0 sm:flex sm:items-start sm:justify-center sm:p-6 sm:pt-[76px]"
+      style={mobileOverlayStyle}
+      role="dialog"
+      aria-modal="true"
+      aria-label={detail.title}
+      onClick={onClose}
+    >
+      <div
+        className="glass fixed flex max-w-[calc(100vw-1.5rem)] flex-col overflow-hidden shadow-2xl border border-white/10 sm:static sm:h-[calc(100dvh-5.5rem)] sm:max-h-[720px] sm:w-full sm:max-w-4xl"
+        style={mobileDialogStyle}
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="relative flex-shrink-0 bg-slate-950/90 backdrop-blur-xl border-b border-white/10 p-4 pr-14 sm:p-5 sm:pr-14">
+          <div className="min-w-0">
+            <div className="min-w-0">
+              <p className="text-[10px] text-teal-400 font-bold uppercase tracking-wider mb-2">Giải thích thống kê</p>
+              <h3 className="text-lg sm:text-xl font-black text-white">{detail.title}</h3>
+              <p className="text-xs text-slate-400 mt-1 leading-relaxed">{detail.subtitle}</p>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="absolute right-3 top-3 z-20 text-slate-400 hover:text-white cursor-pointer p-2"
+            aria-label="Đóng popup"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-hide p-3 sm:p-4 space-y-4">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {detail.summary.map(([label, value]) => (
+              <div key={label} className="bg-white/5 border border-white/5 rounded-xl p-3 min-w-0">
+                <p className="text-[10px] text-slate-400 uppercase font-bold tracking-wider">{label}</p>
+                <SummaryValue label={label} value={value} />
+              </div>
+            ))}
+          </div>
+
+          <div className="bg-teal-500/10 border border-teal-500/15 rounded-xl p-3 sm:p-4 text-sm text-slate-300 leading-relaxed">
+            {detail.explanation}
+          </div>
+
+          <Card className="min-h-0">
+            <CardHeader className="p-3 pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Calendar className="w-4 h-4 text-teal-400" />
+                Các trận tạo nên chỉ số
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              {detail.matches.length === 0 ? (
+                <p className="text-sm text-slate-500 text-center py-6">Không có trận phù hợp trong bộ lọc hiện tại.</p>
+              ) : (
+                <div className="space-y-2 sm:space-y-0 sm:divide-y sm:divide-white/5">
+                  {detail.matches.map(match => {
+                    const playerResult = detail.playerId ? getMatchResultLabel(match, detail.playerId) : undefined;
+                    const duoResult = detail.duoIds
+                      ? { text: isDuoWin(match, detail.duoIds) ? 'Thắng' : 'Thua', className: isDuoWin(match, detail.duoIds) ? 'text-emerald-400' : 'text-rose-400' }
+                      : undefined;
+                    const result = playerResult || duoResult || getMatchResultLabel(match);
+                    const isPositiveResult = result.className.includes('emerald');
+
+                    return (
+                      <div key={match.id} className="rounded-xl border border-white/5 bg-white/[0.03] p-3 text-sm sm:grid sm:grid-cols-[120px_1fr_auto_auto] sm:items-center sm:gap-3 sm:rounded-none sm:border-0 sm:bg-transparent sm:p-4">
+                        <div className="mb-2 flex items-center justify-between gap-3 sm:mb-0 sm:block">
+                          <div className="text-slate-400 tabular-nums text-xs sm:text-sm">{formatMatchDate(match.date)}</div>
+                          <span className={`rounded-full px-2 py-1 text-[10px] font-black uppercase tracking-wider sm:hidden ${
+                            isPositiveResult
+                              ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/15'
+                              : 'bg-rose-500/10 text-rose-400 border border-rose-500/15'
+                          }`}>
+                            {result.text}
+                          </span>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="font-bold text-slate-100 truncate">
+                            {getTeamLabel(match.team1, getPlayerName)}
+                          </div>
+                          <div className="text-xs text-slate-500 truncate">
+                            vs {getTeamLabel(match.team2, getPlayerName)}
+                          </div>
+                        </div>
+                        <div className="mt-3 flex items-center justify-between rounded-lg bg-slate-950/30 px-3 py-2 sm:mt-0 sm:block sm:rounded-none sm:bg-transparent sm:px-0 sm:py-0">
+                          <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 sm:hidden">Tỉ số</span>
+                          <span className="font-mono text-base font-black text-white whitespace-nowrap sm:text-sm sm:font-bold">
+                            {match.score1} - {match.score2}
+                          </span>
+                        </div>
+                        <div className={`hidden font-bold whitespace-nowrap sm:block ${result.className}`}>
+                          {result.text}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function Analytics({ active = true }: { active?: boolean }) {
   const { players, matches, theme, selectedWeek, setSelectedWeek } = useStore();
+  const [activeInsight, setActiveInsight] = useState<InsightDetail | null>(null);
 
   const weekOptions = useMemo(() => getWeekOptions(matches), [matches]);
 
   const filteredMatches = useMemo(() => {
-    if (selectedWeek === 'all') return matches;
-    const weekInfo = weekOptions.find(w => w.id === selectedWeek);
-    if (!weekInfo) return matches;
-    return matches.filter(m => isMatchInWeek(m.date, weekInfo.start, weekInfo.end));
+    const scopedMatches = (() => {
+      if (selectedWeek === 'all') return matches;
+      const weekInfo = weekOptions.find(w => w.id === selectedWeek);
+      if (!weekInfo) return [];
+      return matches.filter(m => isMatchInWeek(m.date, weekInfo.start, weekInfo.end));
+    })();
+
+    return [...scopedMatches].sort((a, b) => getMatchTime(b.date) - getMatchTime(a.date));
   }, [matches, selectedWeek, weekOptions]);
 
   // Khởi tạo bảng xếp hạng và Elo history
@@ -269,14 +623,16 @@ export default function Analytics({ active = true }: { active?: boolean }) {
       .sort((a, b) => a.date.localeCompare(b.date));
   }, [filteredMatches]);
 
-  // 3. Tính toán chuỗi thắng hiện tại của mỗi người chơi
+  // 3. Tính toán chuỗi thắng dài nhất của mỗi người chơi trong bộ lọc hiện tại
   const playerStreaks = useMemo(() => {
     const streaks: Record<string, number> = {};
+    const chronologicalMatches = [...filteredMatches].reverse();
+
     players.forEach(p => {
       streaks[p.id] = 0;
-      
-      // filteredMatches được sắp xếp mới nhất lên đầu
-      for (const m of filteredMatches) {
+      let currentStreak = 0;
+
+      for (const m of chronologicalMatches) {
         const isTeam1 = m.team1.includes(p.id);
         const isTeam2 = m.team2.includes(p.id);
         if (!isTeam1 && !isTeam2) continue; // Không tham gia trận này, bỏ qua
@@ -286,9 +642,10 @@ export default function Analytics({ active = true }: { active?: boolean }) {
         const isWin = (isTeam1 && isTeam1Win) || (isTeam2 && isTeam2Win);
 
         if (isWin) {
-          streaks[p.id] += 1;
+          currentStreak += 1;
+          streaks[p.id] = Math.max(streaks[p.id], currentStreak);
         } else {
-          break; // Đứt chuỗi thắng
+          currentStreak = 0;
         }
       }
     });
@@ -302,15 +659,15 @@ export default function Analytics({ active = true }: { active?: boolean }) {
     // Người chơi cày ải (nhiều trận nhất)
     const activePlayer = leaderboard.reduce((max, p) => p.totalMatches > max.totalMatches ? p : max, leaderboard[0]);
 
-    // Chuỗi thắng hiện tại tốt nhất
+    // Chuỗi thắng dài nhất trong bộ lọc hiện tại
     let maxStreak = 0;
-    let streakPlayer = 'Chưa có';
+    let streakPlayer: { id: string; name: string } | null = null;
     Object.entries(playerStreaks).forEach(([id, val]) => {
       const streak = val as number;
       if (streak > maxStreak) {
         maxStreak = streak;
         const p = players.find(x => x.id === id);
-        if (p) streakPlayer = p.name;
+        if (p) streakPlayer = { id: p.id, name: p.name };
       }
     });
 
@@ -318,9 +675,9 @@ export default function Analytics({ active = true }: { active?: boolean }) {
     const bestDuo = processedDuos[0];
 
     return {
-      activePlayer: activePlayer.totalMatches > 0 ? { name: activePlayer.name, matches: activePlayer.totalMatches } : null,
-      bestStreak: maxStreak > 0 ? { name: streakPlayer, streak: maxStreak } : null,
-      bestDuo: bestDuo ? { names: bestDuo.names, winRate: bestDuo.winRate, total: bestDuo.total } : null
+      activePlayer: activePlayer.totalMatches > 0 ? { id: activePlayer.playerId, name: activePlayer.name, matches: activePlayer.totalMatches } : null,
+      bestStreak: maxStreak > 0 && streakPlayer ? { id: streakPlayer.id, name: streakPlayer.name, streak: maxStreak } : null,
+      bestDuo: bestDuo ? { ids: bestDuo.ids, names: bestDuo.names, winRate: bestDuo.winRate, total: bestDuo.total, wins: bestDuo.wins } : null
     };
   }, [leaderboard, playerStreaks, processedDuos, players]);
 
@@ -341,6 +698,10 @@ export default function Analytics({ active = true }: { active?: boolean }) {
   const gridStroke = theme === 'light' ? 'rgba(15, 23, 42, 0.04)' : 'rgba(255, 255, 255, 0.04)';
   const textFill = theme === 'light' ? '#475569' : '#94a3b8';
   const legendColor = theme === 'light' ? '#1e293b' : '#cbd5e1';
+  const visiblePlayersKey = visiblePlayers.join('|');
+  const selectedWeekLabel = selectedWeek === 'all'
+    ? 'Toàn thời gian'
+    : weekOptions.find(w => w.id === selectedWeek)?.label || 'Bộ lọc hiện tại';
 
   if (matches.length === 0) {
     return (
@@ -382,57 +743,95 @@ export default function Analytics({ active = true }: { active?: boolean }) {
         </div>
       </div>
 
-      {/* 1. Quick Insights Cards */}
-      {insights && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="hover:border-teal-500/20 transition-all duration-300">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shadow-md">
-                <Swords className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cày Ải Nhiều Nhất</span>
-                <span className="text-sm font-bold text-white mt-0.5">
-                  {insights.activePlayer ? `${insights.activePlayer.name} (${insights.activePlayer.matches} trận)` : 'N/A'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:border-amber-500/20 transition-all duration-300">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-md animate-pulse">
-                <Flame className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Chuỗi Thắng Hiện Tại</span>
-                <span className="text-sm font-bold text-white mt-0.5">
-                  {insights.bestStreak ? `${insights.bestStreak.name} (🔥 ${insights.bestStreak.streak} trận)` : 'Chưa có'}
-                </span>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="hover:border-rose-500/20 transition-all duration-300">
-            <CardContent className="p-4 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shadow-md">
-                <Puzzle className="w-6 h-6" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cặp Bài Trùng Nhất</span>
-                <span className="text-xs font-bold text-white mt-0.5 leading-tight truncate max-w-[180px]" title={insights.bestDuo?.names}>
-                  {insights.bestDuo ? insights.bestDuo.names : 'Chưa có'}
-                </span>
-                {insights.bestDuo && (
-                  <span className="text-[10px] text-emerald-400 font-medium">
-                    Tỉ lệ thắng: {insights.bestDuo.winRate.toFixed(0)}% ({insights.bestDuo.total} trận)
+      <div key={`analytics-${selectedWeek}`} className="space-y-6 filter-refresh">
+        {/* 1. Quick Insights Cards */}
+        {insights && (
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <Card
+              role="button"
+              tabIndex={0}
+              onClick={() => insights.activePlayer && setActiveInsight('active')}
+              onKeyDown={e => {
+                if ((e.key === 'Enter' || e.key === ' ') && insights.activePlayer) {
+                  e.preventDefault();
+                  setActiveInsight('active');
+                }
+              }}
+              className="hover:border-teal-500/20 transition-all duration-300 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400"
+              title="Xem chi tiết cày ải nhiều nhất"
+            >
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-400 shadow-md">
+                  <Swords className="w-6 h-6" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cày Ải Nhiều Nhất</span>
+                  <span className="text-sm font-bold text-white mt-0.5">
+                    {insights.activePlayer ? `${insights.activePlayer.name} (${insights.activePlayer.matches} trận)` : 'N/A'}
                   </span>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-      )}
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              role="button"
+              tabIndex={0}
+              onClick={() => insights.bestStreak && setActiveInsight('streak')}
+              onKeyDown={e => {
+                if ((e.key === 'Enter' || e.key === ' ') && insights.bestStreak) {
+                  e.preventDefault();
+                  setActiveInsight('streak');
+                }
+              }}
+              className="hover:border-amber-500/20 transition-all duration-300 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-amber-400"
+              title="Xem chi tiết chuỗi thắng dài nhất"
+            >
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400 shadow-md animate-pulse">
+                  <Flame className="w-6 h-6" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Chuỗi Thắng Dài Nhất</span>
+                  <span className="text-sm font-bold text-white mt-0.5">
+                    {insights.bestStreak ? `${insights.bestStreak.name} (🔥 ${insights.bestStreak.streak} trận)` : 'Chưa có'}
+                  </span>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card
+              role="button"
+              tabIndex={0}
+              onClick={() => insights.bestDuo && setActiveInsight('duo')}
+              onKeyDown={e => {
+                if ((e.key === 'Enter' || e.key === ' ') && insights.bestDuo) {
+                  e.preventDefault();
+                  setActiveInsight('duo');
+                }
+              }}
+              className="hover:border-rose-500/20 transition-all duration-300 cursor-pointer focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-rose-400"
+              title="Xem chi tiết cặp bài trùng nhất"
+            >
+              <CardContent className="p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl bg-rose-500/10 border border-rose-500/20 flex items-center justify-center text-rose-400 shadow-md">
+                  <Puzzle className="w-6 h-6" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Cặp Bài Trùng Nhất</span>
+                  <span className="text-xs font-bold text-white mt-0.5 leading-tight truncate max-w-[180px]" title={insights.bestDuo?.names}>
+                    {insights.bestDuo ? insights.bestDuo.names : 'Chưa có'}
+                  </span>
+                  {insights.bestDuo && (
+                    <span className="text-[10px] text-emerald-400 font-medium">
+                      Tỉ lệ thắng: {insights.bestDuo.winRate.toFixed(0)}% ({insights.bestDuo.total} trận)
+                    </span>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        )}
+      </div>
 
       {/* 2. Elo Rating Trend Line Chart */}
       <Card>
@@ -449,7 +848,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-3 sm:p-6 pt-2">
+        <CardContent key={`${selectedWeek}-${visiblePlayersKey}`} className="p-3 sm:p-6 pt-2 filter-refresh">
           {/* Bộ lọc người chơi dạng Chips clean & tinh tế */}
           <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-6 pb-4 border-b border-white/5">
             <span className="text-[11px] font-semibold text-slate-400 flex-shrink-0">
@@ -535,7 +934,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
       </Card>
 
       {/* 3. Duo Synergy & Activity Stats split */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div key={`analytics-lower-${selectedWeek}`} className="grid grid-cols-1 md:grid-cols-2 gap-6 filter-refresh">
         {/* Duo Synergy */}
         <Card>
           <CardHeader className="pb-3">
@@ -660,6 +1059,17 @@ export default function Analytics({ active = true }: { active?: boolean }) {
           </CardContent>
         </Card>
       </div>
+
+      {activeInsight && insights && (
+        <InsightDetailModal
+          type={activeInsight}
+          insights={insights}
+          filteredMatches={filteredMatches}
+          players={players}
+          selectedWeekLabel={selectedWeekLabel}
+          onClose={() => setActiveInsight(null)}
+        />
+      )}
     </div>
   );
 }

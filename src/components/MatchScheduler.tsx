@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/
 import { Button } from './ui/button';
 import { Trophy, CalendarRange, Sparkles, UserCheck, Play, ArrowRight, RefreshCw, AlertCircle, HelpCircle, User } from 'lucide-react';
 import { ScheduledSet } from '../types';
+import { requireAdminPassword } from '../utils/adminAuth';
 
 interface MatchSchedulerProps {
   onFillMatch: (matchData: { t1p1: string; t1p2: string; t2p1: string; t2p2: string }) => void;
@@ -241,6 +242,8 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
   };
 
   const handlePlayerChange = (setId: string, oldPlayerId: string, newPlayerId: string) => {
+    if (!requireAdminPassword()) return;
+
     let swapMsg = '';
     
     setSchedule(prevSchedule => {
@@ -783,6 +786,7 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
               <Button
                 type="button"
                 onClick={() => {
+                  if (schedule.length > 0 && !requireAdminPassword()) return;
                   generateSchedule();
                   setShowConfirm(false);
                 }}

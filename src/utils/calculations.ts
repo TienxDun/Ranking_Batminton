@@ -78,47 +78,8 @@ export function calculateLeaderboard(players: Player[], matches: Match[]): Playe
     const avgR1 = (rA + rB) / 2;
     const avgR2 = (rC + rD) / 2;
 
-    // Expected outcome (probability of winning) for Team 1 using logistic curve
-    const E1 = 1 / (1 + Math.pow(10, (avgR2 - avgR1) / 400));
-    const E2 = 1 - E1;
-
-    // Actual outcome (S1, S2) blended from win/loss outcome and point ratio
-    let S1 = 0.5;
-    let S2 = 0.5;
-
-    if (m.isScoreExact) {
-      const s1 = m.score1;
-      const s2 = m.score2;
-      const totalPoints = s1 + s2;
-      const winPart = s1 > s2 ? 1.0 : s1 < s2 ? 0.0 : 0.5;
-
-      if (totalPoints > 0) {
-        // Blends win outcome (60% weight) and ratio of points won (40% weight)
-        // This ensures close games (e.g., 21-19) yield smaller rating changes,
-        // and blowouts (e.g., 21-5) yield significantly larger rating changes.
-        const ratioPart = s1 / totalPoints;
-        S1 = 0.6 * winPart + 0.4 * ratioPart;
-      } else {
-        S1 = winPart;
-      }
-      S2 = 1 - S1;
-    } else {
-      // Inexact score (e.g., 1-0 or 0-1) - simulate a typical 21-15 match margin
-      const isTeam1Win = m.score1 > m.score2;
-      if (isTeam1Win) {
-        S1 = 0.6 * 1.0 + 0.4 * (21 / 36); // ~0.833
-      } else if (m.score2 > m.score1) {
-        S1 = 0.6 * 0.0 + 0.4 * (15 / 36); // ~0.167
-      } else {
-        S1 = 0.5;
-      }
-      S2 = 1 - S1;
-    }
-
-    // Update factor K (base of 40 for healthy responsiveness)
-    const K = 40;
-    const ratingChange1 = K * (S1 - E1);
-    const ratingChange2 = K * (S2 - E2); // zero-sum: equals -ratingChange1
+    const ratingChange1 = getTeamRatingChange(avgR1, avgR2, m);
+    const ratingChange2 = -ratingChange1;
 
     // Distribute rating changes to players on each team
     ratings[m.team1[0]] += ratingChange1;
@@ -153,6 +114,49 @@ export interface EloHistoryPoint {
   name: string;
   date: string;
   [playerName: string]: number | string;
+}
+
+export interface PlayerEloMatchBreakdown {
+  match: Match;
+  ratingBefore: number;
+  ratingAfter: number;
+  delta: number;
+  isWin: boolean;
+  partnerId: string;
+  opponentIds: [string, string];
+}
+
+function getMatchEloScores(match: Match): [number, number] {
+  if (match.isScoreExact) {
+    const totalPoints = match.score1 + match.score2;
+    const winPart = match.score1 > match.score2 ? 1.0 : match.score1 < match.score2 ? 0.0 : 0.5;
+
+    if (totalPoints > 0) {
+      const ratioPart = match.score1 / totalPoints;
+      const team1Score = 0.6 * winPart + 0.4 * ratioPart;
+      return [team1Score, 1 - team1Score];
+    }
+
+    return [winPart, 1 - winPart];
+  }
+
+  if (match.score1 > match.score2) {
+    const team1Score = 0.6 * 1.0 + 0.4 * (21 / 36);
+    return [team1Score, 1 - team1Score];
+  }
+
+  if (match.score2 > match.score1) {
+    const team1Score = 0.6 * 0.0 + 0.4 * (15 / 36);
+    return [team1Score, 1 - team1Score];
+  }
+
+  return [0.5, 0.5];
+}
+
+function getTeamRatingChange(team1Rating: number, team2Rating: number, match: Match): number {
+  const expectedTeam1 = 1 / (1 + Math.pow(10, (team2Rating - team1Rating) / 400));
+  const [team1Score] = getMatchEloScores(match);
+  return 40 * (team1Score - expectedTeam1);
 }
 
 export function calculateEloHistory(players: Player[], matches: Match[]): EloHistoryPoint[] {
@@ -193,42 +197,8 @@ export function calculateEloHistory(players: Player[], matches: Match[]): EloHis
     const avgR1 = (rA + rB) / 2;
     const avgR2 = (rC + rD) / 2;
 
-    // Expected outcome (probability of winning) for Team 1
-    const E1 = 1 / (1 + Math.pow(10, (avgR2 - avgR1) / 400));
-    const E2 = 1 - E1;
-
-    // Actual outcome (S1, S2) blended from win/loss outcome and point ratio
-    let S1 = 0.5;
-    let S2 = 0.5;
-
-    if (m.isScoreExact) {
-      const s1 = m.score1;
-      const s2 = m.score2;
-      const totalPoints = s1 + s2;
-      const winPart = s1 > s2 ? 1.0 : s1 < s2 ? 0.0 : 0.5;
-
-      if (totalPoints > 0) {
-        const ratioPart = s1 / totalPoints;
-        S1 = 0.6 * winPart + 0.4 * ratioPart;
-      } else {
-        S1 = winPart;
-      }
-      S2 = 1 - S1;
-    } else {
-      const isTeam1Win = m.score1 > m.score2;
-      if (isTeam1Win) {
-        S1 = 0.6 * 1.0 + 0.4 * (21 / 36);
-      } else if (m.score2 > m.score1) {
-        S1 = 0.6 * 0.0 + 0.4 * (15 / 36);
-      } else {
-        S1 = 0.5;
-      }
-      S2 = 1 - S1;
-    }
-
-    const K = 40;
-    const ratingChange1 = K * (S1 - E1);
-    const ratingChange2 = K * (S2 - E2);
+    const ratingChange1 = getTeamRatingChange(avgR1, avgR2, m);
+    const ratingChange2 = -ratingChange1;
 
     // Cập nhật rating
     currentRatings[m.team1[0]] += ratingChange1;
@@ -248,4 +218,61 @@ export function calculateEloHistory(players: Player[], matches: Match[]): EloHis
   });
 
   return history;
+}
+
+export function calculatePlayerEloBreakdown(
+  players: Player[],
+  matches: Match[],
+  playerId: string
+): PlayerEloMatchBreakdown[] {
+  const ratings: Record<string, number> = {};
+  players.forEach(p => {
+    ratings[p.id] = 1500;
+  });
+
+  const breakdown: PlayerEloMatchBreakdown[] = [];
+  const chronologicalMatches = [...matches].reverse();
+
+  chronologicalMatches.forEach(match => {
+    const hasValidTeam1 = match.team1.every(id => ratings[id] !== undefined);
+    const hasValidTeam2 = match.team2.every(id => ratings[id] !== undefined);
+    if (!hasValidTeam1 || !hasValidTeam2) return;
+
+    const team1Rating = (ratings[match.team1[0]] + ratings[match.team1[1]]) / 2;
+    const team2Rating = (ratings[match.team2[0]] + ratings[match.team2[1]]) / 2;
+    const team1Change = getTeamRatingChange(team1Rating, team2Rating, match);
+    const team2Change = -team1Change;
+
+    const isTeam1Player = match.team1.includes(playerId);
+    const isTeam2Player = match.team2.includes(playerId);
+    const ratingBefore = ratings[playerId] ?? 1500;
+
+    match.team1.forEach(id => {
+      ratings[id] += team1Change;
+    });
+    match.team2.forEach(id => {
+      ratings[id] += team2Change;
+    });
+
+    if (!isTeam1Player && !isTeam2Player) return;
+
+    const isWin =
+      (isTeam1Player && match.score1 > match.score2) ||
+      (isTeam2Player && match.score2 > match.score1);
+    const team = isTeam1Player ? match.team1 : match.team2;
+    const opponents = isTeam1Player ? match.team2 : match.team1;
+    const ratingAfter = ratings[playerId] ?? ratingBefore;
+
+    breakdown.push({
+      match,
+      ratingBefore: Math.round(ratingBefore),
+      ratingAfter: Math.round(ratingAfter),
+      delta: Math.round(ratingAfter - ratingBefore),
+      isWin,
+      partnerId: team.find(id => id !== playerId) || '',
+      opponentIds: opponents,
+    });
+  });
+
+  return breakdown.reverse();
 }

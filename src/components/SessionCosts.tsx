@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { format, parseISO } from 'date-fns';
 import { useStore } from '../store';
 import paymentQrImage from '../../assets/QR.jpg';
@@ -20,6 +21,8 @@ import {
   ExternalLink,
   Plus,
   QrCode,
+  Download,
+  Eye,
 } from 'lucide-react';
 import { CostLineItem, SessionCost, SessionCostBreakdown } from '../types';
 import {
@@ -37,6 +40,7 @@ import {
   parseQuantityInput,
   splitCostEqually,
 } from '../utils/costUtils';
+import { requireAdminPassword } from '../utils/adminAuth';
 
 function todayKey(): string {
   return format(new Date(), 'yyyy-MM-dd');
@@ -50,57 +54,133 @@ function formatSessionDate(date: string): string {
   }
 }
 
+function downloadPaymentQr() {
+  const confirmed = window.confirm('Tải ảnh QR này về máy?');
+  if (!confirmed) return;
+
+  const link = document.createElement('a');
+  link.href = paymentQrImage;
+  link.download = 'ma-qr-nhan-tien.png';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+function PaymentQrPreview({
+  amount,
+  accountName,
+  onClose,
+}: {
+  amount?: number;
+  accountName?: string;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Phóng to mã QR nhận tiền"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-sm sm:max-w-md bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between gap-3 mb-4">
+          <div className="min-w-0">
+            <h3 className="text-base font-bold text-white">Mã QR nhận tiền</h3>
+            {accountName && (
+              <p className="text-xs text-slate-400 truncate">{accountName}</p>
+            )}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="text-slate-400 hover:text-white cursor-pointer p-2"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="bg-white rounded-xl p-3 sm:p-4">
+          <img
+            src={paymentQrImage}
+            alt="Mã QR nhận tiền phóng to"
+            className="w-full aspect-square object-contain"
+          />
+        </div>
+
+        {amount !== undefined && amount > 0 && (
+          <p className="mt-4 text-center text-lg font-bold text-teal-400 tabular-nums">
+            {formatVND(amount)}
+          </p>
+        )}
+
+        <Button
+          type="button"
+          onClick={downloadPaymentQr}
+          className="mt-4 w-full bg-teal-500 hover:bg-teal-600 text-white-force font-bold cursor-pointer"
+        >
+          <Download className="w-4 h-4 mr-2" />
+          Tải ảnh QR
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 function PaymentQrPanel({
   highlightAmount,
 }: {
   highlightAmount?: number;
 }) {
-  const handleDownload = () => {
-    const confirmed = window.confirm('Tải ảnh QR này về máy?');
-    if (!confirmed) return;
-
-    const link = document.createElement('a');
-    link.href = paymentQrImage;
-    link.download = 'ma-qr-nhan-tien.png';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   return (
-    <Card className="border-teal-500/15 bg-gradient-to-br from-teal-500/5 to-transparent">
-      <CardHeader className="pb-3 text-center sm:text-left">
-        <CardTitle className="text-sm sm:text-base font-bold text-white flex items-center justify-center sm:justify-start gap-2">
-          <QrCode className="w-4 h-4 text-teal-400" />
-          MÃ QR NHẬN TIỀN
-        </CardTitle>
-        <CardDescription>
-          Quét mã để chuyển khoản
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="flex flex-col items-center gap-4">
-          <div className="flex-shrink-0">
-            <button
-              type="button"
-              onClick={handleDownload}
-              className="w-36 h-36 sm:w-40 sm:h-40 rounded-xl bg-white p-2 border-2 border-white/20 shadow-lg flex items-center justify-center cursor-pointer transition-transform hover:scale-[1.01]"
-            >
-              <img
-                src={paymentQrImage}
-                alt="Mã QR nhận tiền"
-                className="w-full h-full object-contain"
-              />
-            </button>
+    <>
+      <Card className="border-teal-500/15 bg-gradient-to-br from-teal-500/5 to-transparent">
+        <CardHeader className="pb-3 text-center sm:text-left">
+          <CardTitle className="text-sm sm:text-base font-bold text-white flex items-center justify-center sm:justify-start gap-2">
+            <QrCode className="w-4 h-4 text-teal-400" />
+            MÃ QR NHẬN TIỀN
+          </CardTitle>
+          <CardDescription>
+            Quét mã để chuyển khoản
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col items-center gap-4">
+            <div className="flex-shrink-0">
+              <button
+                type="button"
+                onClick={() => setPreviewOpen(true)}
+                className="w-36 h-36 sm:w-40 sm:h-40 rounded-xl bg-white p-2 border-2 border-white/20 shadow-lg flex items-center justify-center cursor-zoom-in transition-transform hover:scale-[1.01]"
+                aria-label="Phóng to mã QR nhận tiền"
+              >
+                <img
+                  src={paymentQrImage}
+                  alt="Mã QR nhận tiền"
+                  className="w-full h-full object-contain"
+                />
+              </button>
+            </div>
+            {highlightAmount !== undefined && highlightAmount > 0 && (
+              <p className="text-center text-sm font-bold text-teal-400 whitespace-nowrap tabular-nums">
+                {formatVND(highlightAmount)}
+              </p>
+            )}
           </div>
-          {highlightAmount !== undefined && highlightAmount > 0 && (
-            <p className="text-center text-sm font-bold text-teal-400 whitespace-nowrap tabular-nums">
-              {formatVND(highlightAmount)}
-            </p>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+      {previewOpen && (
+        <PaymentQrPreview
+          amount={highlightAmount}
+          onClose={() => setPreviewOpen(false)}
+        />
+      )}
+    </>
   );
 }
 
@@ -160,6 +240,151 @@ function CostLineRow({
   );
 }
 
+function SessionCostDetailModal({
+  session,
+  getPlayerName,
+  getCourtName,
+  onClose,
+}: {
+  session: SessionCost;
+  getPlayerName: (id: string) => string;
+  getCourtName: (id?: string) => string | undefined;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, []);
+
+  const normalized = normalizeCostBreakdown(session.costs);
+  const total = getTotalCost(normalized);
+  const splits = splitCostEqually(total, session.participantIds);
+  const perPerson = splits[0]?.amount ?? 0;
+  const costLineKeys: CostLineKey[] = ['court', 'water', 'shuttlecock', 'other'];
+  const activeCostLines = costLineKeys
+    .map(key => ({ key, item: normalized[key], total: getLineTotal(normalized[key]) }))
+    .filter(line => line.total > 0);
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/75 p-3 backdrop-blur-md sm:p-6"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Chi tiết chi phí ngày ${formatSessionDate(session.date)}`}
+      onClick={onClose}
+    >
+      <div
+        className="glass flex max-h-[calc(100dvh-1.5rem)] w-full max-w-3xl flex-col overflow-hidden border border-white/10 shadow-2xl"
+        onClick={e => e.stopPropagation()}
+      >
+        <div className="relative flex-shrink-0 border-b border-white/10 bg-slate-950/90 p-4 pr-14 backdrop-blur-xl sm:p-5 sm:pr-14">
+          <div className="flex items-center gap-2 text-teal-400 mb-2">
+            <Wallet className="w-4 h-4" />
+            <span className="text-[10px] font-bold uppercase tracking-wider">Chi tiết chi phí</span>
+          </div>
+          <h3 className="text-xl font-black text-white">{formatSessionDate(session.date)}</h3>
+          <p className="mt-1 text-xs text-slate-400">
+            {getCourtName(session.courtId) || 'Chưa chọn sân'}
+          </p>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className="absolute right-3 top-3 z-20 cursor-pointer p-2 text-slate-400 hover:text-white"
+            aria-label="Đóng chi tiết chi phí"
+          >
+            <X className="w-4 h-4" />
+          </Button>
+        </div>
+
+        <div className="min-h-0 flex-1 overflow-y-auto scroll-hide p-4 space-y-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+            {[
+              ['Tổng', formatVND(total), 'text-white'],
+              ['Người', String(session.participantIds.length), 'text-white'],
+              ['Mỗi người', formatVND(perPerson), 'text-teal-400'],
+              ['Sân', getCourtName(session.courtId) || 'N/A', 'text-slate-200'],
+            ].map(([label, value, color]) => (
+              <div key={label} className="min-w-0 rounded-xl border border-white/5 bg-white/5 p-3">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">{label}</p>
+                <p className={`mt-1 truncate text-sm font-black tabular-nums ${color}`} title={value}>
+                  {value}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          <Card className="border-teal-500/15">
+            <CardHeader className="p-3 pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Wallet className="w-4 h-4 text-teal-400" />
+                Các khoản chi
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0 space-y-2">
+              {activeCostLines.length === 0 ? (
+                <p className="text-sm text-slate-500">Không có khoản chi.</p>
+              ) : activeCostLines.map(({ key, item, total: lineTotal }) => (
+                <div key={key} className="rounded-xl border border-white/5 bg-slate-950/30 p-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-bold text-slate-100">
+                        {COST_LINE_LABELS[key]}
+                      </p>
+                      <p className="text-xs text-slate-500">
+                        {formatVND(item.unitPrice)} x {item.quantity} {COST_LINE_UNITS[key]}
+                      </p>
+                    </div>
+                    <p className="font-black text-teal-400 whitespace-nowrap tabular-nums">
+                      {formatVND(lineTotal)}
+                    </p>
+                  </div>
+                  {key === 'other' && normalized.otherNote && (
+                    <p className="mt-2 border-t border-white/5 pt-2 text-xs text-slate-400">
+                      {normalized.otherNote}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+
+          <Card className="border-indigo-500/15">
+            <CardHeader className="p-3 pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Users className="w-4 h-4 text-indigo-400" />
+                Người tham gia
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-3 pt-0">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {splits.map(({ playerId, amount }) => (
+                  <div key={playerId} className="flex items-center justify-between gap-3 rounded-lg bg-white/5 px-3 py-2 text-sm">
+                    <span className="font-semibold text-slate-200 truncate">{getPlayerName(playerId)}</span>
+                    <span className="font-bold text-teal-400 whitespace-nowrap tabular-nums">{formatVND(amount)}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {session.notes && (
+            <div className="rounded-xl border border-white/5 bg-white/5 p-3 text-sm text-slate-300">
+              <p className="mb-1 text-[10px] font-bold uppercase tracking-wider text-slate-400">Ghi chú</p>
+              {session.notes}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
+
 export default function SessionCosts() {
   const {
     players,
@@ -188,6 +413,8 @@ export default function SessionCosts() {
   const [showCourtManager, setShowCourtManager] = useState(false);
   const [newCourtName, setNewCourtName] = useState('');
   const [newCourtMapUrl, setNewCourtMapUrl] = useState('');
+  const [formQrPreviewOpen, setFormQrPreviewOpen] = useState(false);
+  const [viewingSession, setViewingSession] = useState<SessionCost | null>(null);
   const dateChangedByUser = useRef(false);
 
   const activePlayers = useMemo(() => players.filter(p => p.isActive), [players]);
@@ -248,6 +475,7 @@ export default function SessionCosts() {
   };
 
   const openEditForm = (session: SessionCost) => {
+    if (!requireAdminPassword()) return;
     setEditingId(session.id);
     setDate(session.date);
     setCourtId(session.courtId || '');
@@ -394,11 +622,11 @@ export default function SessionCosts() {
       {showCourtManager && !showForm && (
         <Card>
           <CardHeader className="text-center sm:text-left">
-            <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white flex items-center gap-2">
+            <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white flex items-center justify-center sm:justify-start gap-2">
               <MapPin className="w-4 h-4 text-teal-400" />
               QUẢN LÝ CHUNG
             </CardTitle>
-            <CardDescription>Thêm sân bằng URL Google Maps để chọn khi ghi chi phí</CardDescription>
+            <CardDescription className="text-center sm:text-left">Thêm sân bằng URL Google Maps</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <form onSubmit={handleAddCourt} className="space-y-3">
@@ -452,7 +680,10 @@ export default function SessionCosts() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setDeletingCourtId(court.id)}
+                            onClick={() => {
+                              if (!requireAdminPassword()) return;
+                              setDeletingCourtId(court.id);
+                            }}
                             className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer p-1.5"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -629,13 +860,18 @@ export default function SessionCosts() {
                 {perPerson > 0 && (
                   <div className="flex flex-col items-center justify-center gap-1 lg:w-44 flex-shrink-0 p-3 bg-white/5 border border-teal-500/20 rounded-xl">
                     <p className="text-[10px] text-slate-400 whitespace-nowrap">Quét để chuyển</p>
-                    <div className="w-28 h-28 rounded-lg bg-white p-1.5">
+                    <button
+                      type="button"
+                      onClick={() => setFormQrPreviewOpen(true)}
+                      className="w-28 h-28 rounded-lg bg-white p-1.5 cursor-zoom-in transition-transform hover:scale-[1.02]"
+                      aria-label="Phóng to mã QR nhận tiền"
+                    >
                       <img
                         src={paymentQrImage}
                         alt="QR nhận tiền"
                         className="w-full h-full object-contain"
                       />
-                    </div>
+                    </button>
                     <p className="text-sm font-bold text-teal-400 tabular-nums whitespace-nowrap">{formatVND(perPerson)}</p>
                     {config.paymentAccountName && (
                       <p className="text-[10px] text-slate-400 truncate max-w-full">{config.paymentAccountName}</p>
@@ -713,9 +949,25 @@ export default function SessionCosts() {
                   const count = session.participantIds.length;
                   const each = count > 0 ? splitCostEqually(total, session.participantIds)[0]?.amount ?? 0 : 0;
                   return (
-                    <TableRow key={session.id}>
+                    <TableRow
+                      key={session.id}
+                      role="button"
+                      tabIndex={0}
+                      title={`Xem chi tiết chi phí ngày ${formatSessionDate(session.date)}`}
+                      className="cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400"
+                      onClick={() => setViewingSession(session)}
+                      onKeyDown={e => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setViewingSession(session);
+                        }
+                      }}
+                    >
                       <TableCell className="font-medium whitespace-nowrap px-2 sm:px-4 py-2 sm:py-3 tabular-nums">
-                        {formatSessionDate(session.date)}
+                        <span className="inline-flex items-center gap-1.5">
+                          <Eye className="w-3.5 h-3.5 text-teal-400 sm:hidden" />
+                          {formatSessionDate(session.date)}
+                        </span>
                       </TableCell>
                       <TableCell className="hidden md:table-cell text-slate-400 text-sm truncate max-w-[140px] px-2 sm:px-4">
                         {getCourtName(session.courtId) || '—'}
@@ -732,16 +984,25 @@ export default function SessionCosts() {
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => openEditForm(session)}
+                            onClick={e => {
+                              e.stopPropagation();
+                              openEditForm(session);
+                            }}
                             className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 cursor-pointer p-1 sm:p-1.5"
+                            aria-label={`Sửa chi phí ngày ${formatSessionDate(session.date)}`}
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
-                            onClick={() => setDeletingId(session.id)}
+                            onClick={e => {
+                              e.stopPropagation();
+                              if (!requireAdminPassword()) return;
+                              setDeletingId(session.id);
+                            }}
                             className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer p-1 sm:p-1.5"
+                            aria-label={`Xóa chi phí ngày ${formatSessionDate(session.date)}`}
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </Button>
@@ -777,6 +1038,23 @@ export default function SessionCosts() {
             </div>
           </div>
         </div>
+      )}
+
+      {formQrPreviewOpen && (
+        <PaymentQrPreview
+          amount={perPerson}
+          accountName={config.paymentAccountName}
+          onClose={() => setFormQrPreviewOpen(false)}
+        />
+      )}
+
+      {viewingSession && (
+        <SessionCostDetailModal
+          session={viewingSession}
+          getPlayerName={getPlayerName}
+          getCourtName={getCourtName}
+          onClose={() => setViewingSession(null)}
+        />
       )}
 
       {deletingCourtId && (
