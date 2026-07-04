@@ -90,27 +90,42 @@ export default function App() {
 
     if (error) {
       return (
-        <div className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-rose-500/10 border border-rose-500/20 text-[9px] lg:text-[10px] font-bold text-rose-400 flex-shrink-0" title={error}>
+        <button
+          onClick={() => fetchDataFromServer()}
+          className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-rose-500/10 border border-rose-500/20 text-[9px] lg:text-[10px] font-bold text-rose-400 flex-shrink-0 cursor-pointer hover:bg-rose-500/20 active:scale-95 transition-all duration-300"
+          title={`Lỗi: ${error}. Click để đồng bộ lại.`}
+          aria-label="Đồng bộ lại dữ liệu"
+        >
           <span className="h-2 w-2 rounded-full bg-rose-400 animate-pulse flex-shrink-0" />
           <span className="hidden lg:inline whitespace-nowrap">Mất kết nối</span>
-        </div>
+        </button>
       );
     }
 
     if (isGoogleSheets) {
       return (
-        <div className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[9px] lg:text-[10px] font-bold text-emerald-400 flex-shrink-0" title="Kết nối thành công với Google Sheets Database">
+        <button
+          onClick={() => fetchDataFromServer()}
+          className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-[9px] lg:text-[10px] font-bold text-emerald-400 flex-shrink-0 cursor-pointer hover:bg-emerald-500/20 active:scale-95 transition-all duration-300"
+          title="Đã đồng bộ Sheets. Click để đồng bộ lại."
+          aria-label="Đồng bộ lại dữ liệu"
+        >
           <span className="h-2 w-2 rounded-full bg-emerald-400 flex-shrink-0" />
           <span className="hidden lg:inline whitespace-nowrap">Đã đồng bộ Sheets</span>
-        </div>
+        </button>
       );
     }
 
     return (
-      <div className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-rose-500/10 border border-rose-500/20 text-[9px] lg:text-[10px] font-bold text-rose-400 flex-shrink-0" title="Chưa cấu hình cơ sở dữ liệu Google Sheets">
+      <button
+        onClick={() => fetchDataFromServer()}
+        className="flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl bg-rose-500/10 border border-rose-500/20 text-[9px] lg:text-[10px] font-bold text-rose-400 flex-shrink-0 cursor-pointer hover:bg-rose-500/20 active:scale-95 transition-all duration-300"
+        title="Chưa cấu hình DB. Click để thử kết nối lại."
+        aria-label="Đồng bộ lại dữ liệu"
+      >
         <span className="h-2 w-2 rounded-full bg-rose-400 flex-shrink-0" />
         <span className="hidden lg:inline whitespace-nowrap">Chưa cấu hình DB</span>
-      </div>
+      </button>
     );
   };
 
