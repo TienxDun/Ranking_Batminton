@@ -88,7 +88,7 @@ function PaymentQrPreview({
       onClick={onClose}
     >
       <div
-        className="w-full max-w-sm sm:max-w-md bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl"
+        className="w-full max-w-sm sm:max-w-md bg-slate-900 border border-white/10 rounded-2xl p-4 sm:p-5 shadow-2xl pt-safe-modal"
         onClick={e => e.stopPropagation()}
       >
         <div className="flex items-center justify-between gap-3 mb-4">
@@ -303,7 +303,7 @@ function SessionCostDetailModal({
         className="modal-surface flex max-h-[calc(100dvh-1.5rem)] w-full max-w-4xl flex-col overflow-hidden border border-white/10 shadow-2xl"
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative flex-shrink-0 border-b border-white/10 bg-slate-900 p-3 pr-14 sm:p-4 sm:pr-14">
+        <div className="relative flex-shrink-0 border-b border-white/10 bg-slate-900 p-3 pr-14 sm:p-4 sm:pr-14 pt-safe-modal-p3">
           <div className="flex items-center gap-1.5 text-teal-600 mb-1">
             <Wallet className="w-3.5 h-3.5" />
             <span className="text-[10px] font-bold uppercase tracking-wider">Chi tiết chi phí</span>
@@ -316,7 +316,7 @@ function SessionCostDetailModal({
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-3 top-2.5 z-20 cursor-pointer p-2 text-slate-400 hover:bg-white/5 hover:text-white"
+            className="absolute right-3 top-safe-btn-2.5 z-20 cursor-pointer p-2 text-slate-400 hover:bg-white/5 hover:text-white"
             aria-label="Đóng chi tiết chi phí"
           >
             <X className="w-4 h-4" />

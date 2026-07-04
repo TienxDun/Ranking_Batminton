@@ -383,7 +383,7 @@ function InsightDetailModal({
         style={mobileDialogStyle}
         onClick={e => e.stopPropagation()}
       >
-        <div className="relative flex-shrink-0 bg-slate-900 border-b border-white/10 p-4 pr-14 sm:p-5 sm:pr-14">
+        <div className="relative flex-shrink-0 bg-slate-900 border-b border-white/10 p-4 pr-14 sm:p-5 sm:pr-14 pt-safe-modal">
           <div className="min-w-0">
             <div className="min-w-0">
               <p className="text-[10px] text-teal-600 font-bold uppercase tracking-wider mb-2">Giải thích thống kê</p>
@@ -395,7 +395,7 @@ function InsightDetailModal({
             variant="ghost"
             size="sm"
             onClick={onClose}
-            className="absolute right-3 top-3 z-20 text-slate-400 hover:bg-white/5 hover:text-white cursor-pointer p-2"
+            className="absolute right-3 top-safe-btn z-20 text-slate-400 hover:bg-white/5 hover:text-white cursor-pointer p-2"
             aria-label="Đóng popup"
           >
             <X className="w-4 h-4" />

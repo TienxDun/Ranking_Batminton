@@ -132,6 +132,36 @@ input[type="time"]::-webkit-date-and-time-value {
   margin-bottom: env(safe-area-inset-bottom, 0px);
 }
 
+/* Modal Safe Area Adjustments (Mobile Only) */
+.top-safe-btn {
+  top: 0.75rem; /* default top-3 */
+}
+.top-safe-btn-2\.5 {
+  top: 0.625rem; /* default top-2.5 */
+}
+.pt-safe-modal {
+  padding-top: 1rem; /* default pt-4 */
+}
+.pt-safe-modal-p3 {
+  padding-top: 0.75rem; /* default pt-3 */
+}
+
+@media (max-width: 639px) {
+  .pt-safe-modal {
+    padding-top: calc(1rem + env(safe-area-inset-top, 0px)) !important;
+  }
+  .pt-safe-modal-p3 {
+    padding-top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important;
+  }
+  .top-safe-btn {
+    top: calc(0.75rem + env(safe-area-inset-top, 0px)) !important;
+  }
+  .top-safe-btn-2\.5 {
+    top: calc(0.625rem + env(safe-area-inset-top, 0px)) !important;
+  }
+}
+
+
 
 /* Light mode overrides for Tailwind utility colors to maintain pristine contrast */
 .light .text-white {
