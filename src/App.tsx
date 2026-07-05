@@ -11,9 +11,11 @@ import MatchHistory from './components/MatchHistory';
 import PlayerManagement from './components/PlayerManagement';
 import SessionCosts from './components/SessionCosts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
+import OfflineNotice from './components/OfflineNotice';
 import { Button } from './components/ui/button';
-import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings, Wallet, AlertCircle } from 'lucide-react';
+import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings, Wallet, AlertCircle, WifiOff } from 'lucide-react';
 import { useStore } from './store';
+import { useOnlineStatus } from './hooks/useOnlineStatus';
 
 type Tab = 'dashboard' | 'analytics' | 'add' | 'history' | 'costs' | 'players';
 
@@ -27,6 +29,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>(() => getTabFromHash(window.location.hash));
   const [prefilledMatch, setPrefilledMatch] = useState<{ t1p1: string; t1p2: string; t2p1: string; t2p2: string } | undefined>(undefined);
   const { fetchDataFromServer, isLoading, error, theme, toggleTheme } = useStore();
+  const isOnline = useOnlineStatus();
 
   const changeTab = (newTab: Tab, options?: { replace?: boolean }) => {
     if (activeTab === newTab) return;
@@ -78,6 +81,19 @@ export default function App() {
 
   const renderDbStatus = () => {
     const isGoogleSheets = !!import.meta.env.VITE_GOOGLE_SCRIPT_URL;
+
+    if (!isOnline) {
+      return (
+        <div
+          className="offline-status flex items-center justify-center gap-1.5 w-7 h-7 lg:w-auto lg:h-9 lg:px-2.5 rounded-lg lg:rounded-xl text-[9px] lg:text-[10px] font-bold flex-shrink-0"
+          title="Bạn đang offline. Dữ liệu chưa thể cập nhật lên hệ thống."
+          aria-label="Bạn đang offline"
+        >
+          <WifiOff className="w-3.5 h-3.5 flex-shrink-0" />
+          <span className="hidden lg:inline whitespace-nowrap">Offline</span>
+        </div>
+      );
+    }
 
     if (isLoading) {
       return (
@@ -271,6 +287,8 @@ export default function App() {
           </div>
         </div>
       </header>
+
+      {!isOnline && <OfflineNotice />}
 
       {error && (
         <div className="max-w-4xl mx-auto px-4 pt-6 pb-0 relative z-1">

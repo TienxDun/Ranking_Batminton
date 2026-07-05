@@ -13,6 +13,7 @@ import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
 import { requireAdminPassword } from '../utils/adminAuth';
 import { calculatePlayerEloBreakdown } from '../utils/calculations';
 import { useModalHistory } from '../hooks/useModalHistory';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 function formatMatchDateTime(date: string) {
   const parsed = parseISO(date);
@@ -216,6 +217,7 @@ export function MatchDetailModal({
 
 export default function MatchHistory() {
   const { matches, players, deleteMatch, updateMatch, selectedWeek, setSelectedWeek } = useStore();
+  const isOnline = useOnlineStatus();
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
@@ -302,6 +304,11 @@ export default function MatchHistory() {
     setEditErrorMsg(null);
 
     if (!editingMatch) return;
+
+    if (!isOnline) {
+      setEditErrorMsg("Bạn đang offline. Vui lòng kết nối mạng trước khi lưu thay đổi để điểm được cập nhật lên hệ thống.");
+      return;
+    }
 
     if (!editT1p1 || !editT1p2 || !editT2p1 || !editT2p2) {
       setEditErrorMsg("Vui lòng chọn đủ 4 người chơi!");
@@ -661,6 +668,13 @@ export default function MatchHistory() {
               </div>
             )}
 
+            {!isOnline && (
+              <div className="offline-alert offline-alert-compact p-3 rounded-xl flex items-start gap-2.5 text-sm animate-in fade-in duration-200">
+                <AlertTriangle className="w-4 h-4 flex-shrink-0 mt-0.5" />
+                <span>Bạn đang offline. Không thể lưu thay đổi điểm số cho đến khi có mạng.</span>
+              </div>
+            )}
+
             <form onSubmit={confirmEdit} className="space-y-4">
               <div>
                 <label className="block text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Thời gian đấu</label>
@@ -718,8 +732,8 @@ export default function MatchHistory() {
                 <Button type="button" variant="ghost" onClick={() => setEditingMatch(null)} className="text-slate-300 hover:text-white">
                   Hủy
                 </Button>
-                <Button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white font-semibold">
-                  Lưu thay đổi
+                <Button type="submit" className="bg-teal-500 hover:bg-teal-600 text-white font-semibold" disabled={!isOnline}>
+                  {isOnline ? 'Lưu thay đổi' : 'Đang offline'}
                 </Button>
               </div>
             </form>

@@ -113,6 +113,11 @@ export const useStore = create<AppState>()(
         const sessionCosts = updatedFields.sessionCosts !== undefined ? updatedFields.sessionCosts : get().sessionCosts;
         const courts = updatedFields.courts !== undefined ? updatedFields.courts : get().courts;
 
+        if (typeof navigator !== 'undefined' && !navigator.onLine) {
+          set({ error: 'Bạn đang offline. Dữ liệu chưa thể cập nhật lên hệ thống.' });
+          return;
+        }
+
         if (!GOOGLE_SCRIPT_URL) {
           console.warn('Không thể đồng bộ: Chưa cấu hình VITE_GOOGLE_SCRIPT_URL');
           set({ error: 'Chưa cấu hình VITE_GOOGLE_SCRIPT_URL' });

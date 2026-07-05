@@ -31,9 +31,13 @@ export function useModalHistory(onClose: () => void, isOpen: boolean = true) {
     return () => {
       window.removeEventListener('popstate', handlePopState);
 
-      // Clean up the virtual history state if the modal was closed via UI click (X or overlay)
+      // Replace the virtual modal entry instead of navigating back here.
+      // React StrictMode may run effect cleanup immediately after mount in dev;
+      // calling history.back() from cleanup can emit a delayed popstate that
+      // closes a newly opened modal before the user sees it.
       if (window.history.state?.modalStateKey === modalStateKey) {
-        window.history.back();
+        const currentTab = window.location.hash.replace('#', '') || 'dashboard';
+        window.history.replaceState({ tab: currentTab }, '', window.location.href);
       }
     };
   }, [isOpen]);

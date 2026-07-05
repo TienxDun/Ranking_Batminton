@@ -5,7 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Input } from './ui/input';
 import { Select } from './ui/select';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, WifiOff } from 'lucide-react';
+import { useOnlineStatus } from '../hooks/useOnlineStatus';
 
 interface MatchFormProps {
   onSaved: () => void;
@@ -19,6 +20,7 @@ interface MatchFormProps {
 
 export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
   const { players, addMatch } = useStore();
+  const isOnline = useOnlineStatus();
   const activePlayers = players.filter(p => p.isActive);
 
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
@@ -43,6 +45,11 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg(null);
+
+    if (!isOnline) {
+      setErrorMsg("Bạn đang offline. Vui lòng kết nối mạng trước khi lưu trận để điểm được cập nhật lên hệ thống.");
+      return;
+    }
 
     if (!t1p1 || !t1p2 || !t2p1 || !t2p2) {
       setErrorMsg("Vui lòng chọn đủ 4 người chơi!");
@@ -84,6 +91,13 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
           <div className="mb-4 p-3 bg-rose-500/10 border border-rose-500/20 rounded-xl flex items-center gap-2.5 text-rose-400 text-sm animate-in fade-in duration-200">
             <AlertCircle className="w-4 h-4 flex-shrink-0" />
             <span>{errorMsg}</span>
+          </div>
+        )}
+
+        {!isOnline && (
+          <div className="offline-alert offline-alert-compact mb-4 p-3 rounded-xl flex items-start gap-2.5 text-sm animate-in fade-in duration-200">
+            <WifiOff className="w-4 h-4 flex-shrink-0 mt-0.5" />
+            <span>Bạn đang offline. Không thể lưu trận mới vì điểm sẽ chưa cập nhật lên hệ thống.</span>
           </div>
         )}
         
@@ -137,7 +151,9 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
             </div>
           </div>
 
-          <Button type="submit" className="w-full">Lưu Trận Đấu</Button>
+          <Button type="submit" className="w-full" disabled={!isOnline}>
+            {isOnline ? 'Lưu Trận Đấu' : 'Đang offline - chưa thể lưu'}
+          </Button>
         </form>
       </CardContent>
     </Card>

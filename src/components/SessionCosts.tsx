@@ -22,7 +22,6 @@ import {
   Plus,
   QrCode,
   Download,
-  Eye,
   Activity,
   TrendingUp,
 } from 'lucide-react';
@@ -55,6 +54,42 @@ function formatSessionDate(date: string): string {
   } catch {
     return date;
   }
+}
+
+type SessionDateState = 'future' | 'today' | 'past';
+
+function getSessionDateState(date: string, today: string): SessionDateState {
+  const dateKey = date.slice(0, 10);
+  if (dateKey > today) return 'future';
+  if (dateKey === today) return 'today';
+  return 'past';
+}
+
+function getSessionDateMeta(state: SessionDateState) {
+  if (state === 'future') {
+    return {
+      label: 'Sắp tới',
+      rowClass: 'session-row-future',
+      badgeClass: 'session-date-badge session-date-badge-future',
+      markerClass: 'session-date-marker session-date-marker-future',
+    };
+  }
+
+  if (state === 'today') {
+    return {
+      label: 'Hôm nay',
+      rowClass: 'session-row-today',
+      badgeClass: 'session-date-badge session-date-badge-today',
+      markerClass: 'session-date-marker session-date-marker-today',
+    };
+  }
+
+  return {
+    label: 'Đã qua',
+    rowClass: 'session-row-past',
+    badgeClass: 'session-date-badge session-date-badge-past',
+    markerClass: 'session-date-marker session-date-marker-past',
+  };
 }
 
 function downloadPaymentQr() {
@@ -494,6 +529,7 @@ export default function SessionCosts() {
   const dateChangedByUser = useRef(false);
 
   const activePlayers = useMemo(() => players.filter(p => p.isActive), [players]);
+  const currentDateKey = todayKey();
 
   const sortedSessions = useMemo(
     () => [...sessionCosts].sort((a, b) => b.date.localeCompare(a.date)),
@@ -1040,6 +1076,7 @@ export default function SessionCosts() {
                     <TableHeader>
                       <TableRow>
                         <TableHead className="whitespace-nowrap px-1.5 sm:px-2.5 py-2 sm:py-2.5">Ngày</TableHead>
+                        <TableHead className="hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Trạng thái</TableHead>
                         <TableHead className="hidden md:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Sân</TableHead>
                         <TableHead className="text-right hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Tổng</TableHead>
                         <TableHead className="text-center whitespace-nowrap px-1.5 sm:px-2.5 w-10 sm:w-auto">Người</TableHead>
@@ -1058,13 +1095,14 @@ export default function SessionCosts() {
                         const total = getTotalCost(normalized);
                         const count = session.participantIds.length;
                         const each = count > 0 ? splitCostEqually(total, session.participantIds)[0]?.amount ?? 0 : 0;
+                        const dateMeta = getSessionDateMeta(getSessionDateState(session.date, currentDateKey));
                         return (
                           <TableRow
                             key={session.id}
                             role="button"
                             tabIndex={0}
                             title={`Xem chi tiết chi phí ngày ${formatSessionDate(session.date)}`}
-                            className="cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400"
+                            className={`cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 ${dateMeta.rowClass}`}
                             onClick={() => setViewingSession(session)}
                             onKeyDown={e => {
                               if (e.key === 'Enter' || e.key === ' ') {
@@ -1075,8 +1113,13 @@ export default function SessionCosts() {
                           >
                             <TableCell className="font-medium whitespace-nowrap px-1.5 sm:px-2.5 py-2 sm:py-2.5 tabular-nums">
                               <span className="inline-flex items-center gap-1.5">
-                                <Eye className="w-3.5 h-3.5 text-teal-400 sm:hidden" />
+                                <span className={`${dateMeta.markerClass} sm:hidden`} aria-hidden="true" />
                                 {formatSessionDate(session.date)}
+                              </span>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">
+                              <span className={dateMeta.badgeClass}>
+                                {dateMeta.label}
                               </span>
                             </TableCell>
                             <TableCell className="hidden md:table-cell text-slate-400 text-sm truncate max-w-[110px] px-1.5 sm:px-2.5">
