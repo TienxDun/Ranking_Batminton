@@ -6,14 +6,16 @@ import { Button } from './ui/button';
 import { Trophy, CalendarRange, Sparkles, UserCheck, Play, ArrowRight, RefreshCw, AlertCircle, HelpCircle, User } from 'lucide-react';
 import { ScheduledSet } from '../types';
 import { requireAdminPassword } from '../utils/adminAuth';
+import { getGroupPlayers, getGroupSchedule } from '../utils/groupUtils';
 
 interface MatchSchedulerProps {
   onFillMatch: (matchData: { t1p1: string; t1p2: string; t2p1: string; t2p2: string }) => void;
 }
 
 export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
-  const { players, schedule: dbSchedule, schedulerUIState, schedulerState, saveScheduleToDB, setSchedulerUIState, fetchDataFromServer, theme } = useStore();
-  const activePlayers = players.filter(p => p.isActive);
+  const { players, selectedGroupId, schedule: allSchedule, schedulerUIState, schedulerState, saveScheduleToDB, setSchedulerUIState, fetchDataFromServer, theme } = useStore();
+  const activePlayers = getGroupPlayers(players, selectedGroupId).filter(p => p.isActive);
+  const dbSchedule = getGroupSchedule(allSchedule, selectedGroupId);
   const isLight = theme === 'light';
 
   // Helper to calculate perfect sets
@@ -76,6 +78,15 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
       setIsGenerated(true);
     }
   }, [dbSchedule]);
+
+  useEffect(() => {
+    const validSelectedIds = selectedIds.filter(id => activePlayers.some(p => p.id === id));
+    if (validSelectedIds.length !== selectedIds.length) {
+      setSelectedIds(validSelectedIds);
+    }
+    setSchedule(dbSchedule);
+    setIsGenerated(dbSchedule.length > 0);
+  }, [selectedGroupId]);
 
 
   const [swapNotification, setSwapNotification] = useState<string | null>(null);
@@ -215,6 +226,7 @@ export default function MatchScheduler({ onFillMatch }: MatchSchedulerProps) {
       if (best) {
         generated.push({
           id: `${s}-${Date.now()}-${Math.random().toString(36).substr(2, 4)}`,
+          groupId: selectedGroupId,
           setIndex: s,
           team1: best.team1,
           team2: best.team2,

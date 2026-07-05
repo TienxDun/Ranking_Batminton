@@ -7,6 +7,7 @@ import { Input } from './ui/input';
 import { Select } from './ui/select';
 import { AlertCircle, WifiOff } from 'lucide-react';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { getGroupPlayers } from '../utils/groupUtils';
 
 interface MatchFormProps {
   onSaved: () => void;
@@ -19,9 +20,9 @@ interface MatchFormProps {
 }
 
 export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
-  const { players, addMatch } = useStore();
+  const { players, selectedGroupId, addMatch } = useStore();
   const isOnline = useOnlineStatus();
-  const activePlayers = players.filter(p => p.isActive);
+  const activePlayers = getGroupPlayers(players, selectedGroupId).filter(p => p.isActive);
 
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
   const [t1p1, setT1p1] = useState(initialData?.t1p1 || '');
@@ -67,6 +68,7 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
     }
 
     addMatch({
+      groupId: selectedGroupId,
       date,
       team1: [t1p1, t1p2],
       team2: [t2p1, t2p2],

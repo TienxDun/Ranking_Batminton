@@ -43,6 +43,7 @@ import {
 } from '../utils/costUtils';
 import { requireAdminPassword } from '../utils/adminAuth';
 import { useModalHistory } from '../hooks/useModalHistory';
+import { getGroupMatches, getGroupPlayers, getGroupSessionCosts } from '../utils/groupUtils';
 
 function todayKey(): string {
   return format(new Date(), 'yyyy-MM-dd');
@@ -501,6 +502,7 @@ export default function SessionCosts() {
     players,
     matches,
     sessionCosts,
+    selectedGroupId,
     courts,
     addSessionCost,
     updateSessionCost,
@@ -528,20 +530,26 @@ export default function SessionCosts() {
   const [viewingSession, setViewingSession] = useState<SessionCost | null>(null);
   const dateChangedByUser = useRef(false);
 
-  const activePlayers = useMemo(() => players.filter(p => p.isActive), [players]);
+  const groupPlayers = useMemo(() => getGroupPlayers(players, selectedGroupId), [players, selectedGroupId]);
+  const groupMatches = useMemo(() => getGroupMatches(matches, selectedGroupId), [matches, selectedGroupId]);
+  const groupSessionCosts = useMemo(
+    () => getGroupSessionCosts(sessionCosts, selectedGroupId),
+    [sessionCosts, selectedGroupId]
+  );
+  const activePlayers = useMemo(() => groupPlayers.filter(p => p.isActive), [groupPlayers]);
   const currentDateKey = todayKey();
 
   const sortedSessions = useMemo(
-    () => [...sessionCosts].sort((a, b) => b.date.localeCompare(a.date)),
-    [sessionCosts]
+    () => [...groupSessionCosts].sort((a, b) => b.date.localeCompare(a.date)),
+    [groupSessionCosts]
   );
 
   const totalAllSessionsCost = useMemo(() => {
-    return sessionCosts.reduce((sum, session) => {
+    return groupSessionCosts.reduce((sum, session) => {
       const normalized = normalizeCostBreakdown(session.costs);
       return sum + getTotalCost(normalized);
     }, 0);
-  }, [sessionCosts]);
+  }, [groupSessionCosts]);
 
   const totalCost = useMemo(() => getTotalCost(costs), [costs]);
   const splits = useMemo(
@@ -553,8 +561,8 @@ export default function SessionCosts() {
     : 0;
 
   const autoDetectedIds = useMemo(
-    () => getPlayersFromMatchesOnDate(matches, date),
-    [matches, date]
+    () => getPlayersFromMatchesOnDate(groupMatches, date),
+    [groupMatches, date]
   );
 
   const selectedCourt = courts.find(c => c.id === courtId);
@@ -577,7 +585,7 @@ export default function SessionCosts() {
     setDate(todayKey());
     setCourtId('');
     setCosts(emptyCostBreakdown());
-    setParticipantIds(getPlayersFromMatchesOnDate(matches, todayKey()));
+    setParticipantIds(getPlayersFromMatchesOnDate(groupMatches, todayKey()));
     setNotes('');
     setShowForm(false);
   };
@@ -588,7 +596,7 @@ export default function SessionCosts() {
     setDate(today);
     setCourtId('');
     setCosts(emptyCostBreakdown());
-    setParticipantIds(getPlayersFromMatchesOnDate(matches, today));
+    setParticipantIds(getPlayersFromMatchesOnDate(groupMatches, today));
     setNotes('');
     setShowForm(true);
   };
@@ -608,7 +616,7 @@ export default function SessionCosts() {
     dateChangedByUser.current = true;
     setDate(newDate);
 
-    const existing = sessionCosts.find(s => s.date === newDate && s.id !== editingId);
+    const existing = groupSessionCosts.find(s => s.date === newDate && s.id !== editingId);
     if (existing) {
       openEditForm(existing);
     }
@@ -639,6 +647,7 @@ export default function SessionCosts() {
     }
 
     const payload = {
+      groupId: selectedGroupId,
       date,
       courtId: courtId || undefined,
       costs: {
@@ -946,7 +955,7 @@ export default function SessionCosts() {
                 <div className="grid grid-cols-2 gap-3 mt-3">
                   <div className="bg-white/5 border border-white/5 rounded-xl p-2.5">
                     <p className="text-[10px] text-slate-400 uppercase font-semibold">Tổng buổi đánh</p>
-                    <p className="text-base font-black text-white mt-0.5 tabular-nums">{sessionCosts.length}</p>
+                    <p className="text-base font-black text-white mt-0.5 tabular-nums">{groupSessionCosts.length}</p>
                   </div>
                   <div className="bg-white/5 border border-white/5 rounded-xl p-2.5">
                     <p className="text-[10px] text-slate-400 uppercase font-semibold">Tổng tích lũy</p>

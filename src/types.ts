@@ -3,10 +3,18 @@ export type Player = {
   name: string;
   isActive: boolean;
   gender: 'male' | 'female';
+  groupIds: string[];
+};
+
+export type PlayerGroup = {
+  id: string;
+  name: string;
+  isActive: boolean;
 };
 
 export type Match = {
   id: string;
+  groupId: string;
   date: string; // ISO string format YYYY-MM-DD or YYYY-MM-DDTHH:mm
   team1: [string, string]; // Player IDs
   team2: [string, string]; // Player IDs
@@ -37,6 +45,7 @@ export type LeaderboardConfig = {
 
 export type ScheduledSet = {
   id: string;
+  groupId: string;
   setIndex: number;
   team1: [string, string];
   team2: [string, string];
@@ -63,6 +72,7 @@ export type Court = {
 
 export type SessionCost = {
   id: string;
+  groupId: string;
   date: string;
   courtId?: string;
   costs: SessionCostBreakdown;

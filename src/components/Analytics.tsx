@@ -24,6 +24,7 @@ import { Button } from './ui/button';
 import { Match } from '../types';
 import { useVisualViewportRect } from '../hooks/useVisualViewportRect';
 import { useModalHistory } from '../hooks/useModalHistory';
+import { getGroupMatches, getGroupPlayers } from '../utils/groupUtils';
 
 const PLAYER_COLORS: Record<string, string> = {
   'Khoa': '#2dd4bf',   // Teal
@@ -480,25 +481,27 @@ function InsightDetailModal({
 }
 
 export default function Analytics({ active = true }: { active?: boolean }) {
-  const { players, matches, theme, selectedWeek, setSelectedWeek } = useStore();
+  const { players, matches, selectedGroupId, theme, selectedWeek, setSelectedWeek } = useStore();
+  const groupPlayers = useMemo(() => getGroupPlayers(players, selectedGroupId), [players, selectedGroupId]);
+  const groupMatches = useMemo(() => getGroupMatches(matches, selectedGroupId), [matches, selectedGroupId]);
   const [activeInsight, setActiveInsight] = useState<InsightDetail | null>(null);
 
-  const weekOptions = useMemo(() => getWeekOptions(matches), [matches]);
+  const weekOptions = useMemo(() => getWeekOptions(groupMatches), [groupMatches]);
 
   const filteredMatches = useMemo(() => {
     const scopedMatches = (() => {
-      if (selectedWeek === 'all') return matches;
+      if (selectedWeek === 'all') return groupMatches;
       const weekInfo = weekOptions.find(w => w.id === selectedWeek);
       if (!weekInfo) return [];
-      return matches.filter(m => isMatchInWeek(m.date, weekInfo.start, weekInfo.end));
+      return groupMatches.filter(m => isMatchInWeek(m.date, weekInfo.start, weekInfo.end));
     })();
 
     return [...scopedMatches].sort((a, b) => getMatchTime(b.date) - getMatchTime(a.date));
-  }, [matches, selectedWeek, weekOptions]);
+  }, [groupMatches, selectedWeek, weekOptions]);
 
   // Khởi tạo bảng xếp hạng và Elo history
-  const leaderboard = useMemo(() => calculateLeaderboard(players, filteredMatches), [players, filteredMatches]);
-  const fullEloHistory = useMemo(() => calculateEloHistory(players, matches), [players, matches]);
+  const leaderboard = useMemo(() => calculateLeaderboard(groupPlayers, filteredMatches), [groupPlayers, filteredMatches]);
+  const fullEloHistory = useMemo(() => calculateEloHistory(groupPlayers, groupMatches), [groupPlayers, groupMatches]);
 
   // Lọc Elo History theo tuần được chọn, giữ nguyên Elo tích lũy thực tế
   const eloHistory = useMemo(() => {
@@ -569,8 +572,8 @@ export default function Analytics({ active = true }: { active?: boolean }) {
       const processTeam = (team: [string, string], isWin: boolean) => {
         if (team.length < 2) return;
         const [p1Id, p2Id] = [...team].sort();
-        const p1 = players.find(p => p.id === p1Id);
-        const p2 = players.find(p => p.id === p2Id);
+        const p1 = groupPlayers.find(p => p.id === p1Id);
+        const p2 = groupPlayers.find(p => p.id === p2Id);
         if (!p1 || !p2) return;
 
         const key = `${p1Id}_${p2Id}`;
@@ -601,7 +604,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
     }));
 
     return list;
-  }, [filteredMatches, players]);
+  }, [filteredMatches, groupPlayers]);
 
   // Ưu tiên lọc các cặp thi đấu từ 2 trận trở lên để số liệu tin cậy
   const processedDuos = useMemo(() => {
@@ -641,7 +644,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
     const streaks: Record<string, number> = {};
     const chronologicalMatches = [...filteredMatches].reverse();
 
-    players.forEach(p => {
+    groupPlayers.forEach(p => {
       streaks[p.id] = 0;
       let currentStreak = 0;
 
@@ -663,7 +666,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
       }
     });
     return streaks;
-  }, [filteredMatches, players]);
+  }, [filteredMatches, groupPlayers]);
 
   // 4. Quick Insights
   const insights = useMemo(() => {
@@ -679,7 +682,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
       const streak = val as number;
       if (streak > maxStreak) {
         maxStreak = streak;
-        const p = players.find(x => x.id === id);
+        const p = groupPlayers.find(x => x.id === id);
         if (p) streakPlayer = { id: p.id, name: p.name };
       }
     });
@@ -692,7 +695,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
       bestStreak: maxStreak > 0 && streakPlayer ? { id: streakPlayer.id, name: streakPlayer.name, streak: maxStreak } : null,
       bestDuo: bestDuo ? { ids: bestDuo.ids, names: bestDuo.names, winRate: bestDuo.winRate, total: bestDuo.total, wins: bestDuo.wins } : null
     };
-  }, [leaderboard, playerStreaks, processedDuos, players]);
+  }, [leaderboard, playerStreaks, processedDuos, groupPlayers]);
 
   const handleTogglePlayer = (playerName: string) => {
     setVisiblePlayers(prev =>
@@ -868,7 +871,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
               Hiển thị trên biểu đồ:
             </span>
             <div className="flex flex-wrap gap-1.5">
-              {players.map((p, index) => {
+              {groupPlayers.map((p, index) => {
                 const isChecked = visiblePlayers.includes(p.name);
                 const color = getPlayerColor(p.name, index);
                 return (
@@ -924,7 +927,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
                     tickLine={false}
                   />
                   <Tooltip content={<EloTooltip theme={theme} />} />
-                  {players.map((p, index) => {
+                  {groupPlayers.map((p, index) => {
                     if (!visiblePlayers.includes(p.name)) return null;
                     return (
                       <Line
@@ -1078,7 +1081,7 @@ export default function Analytics({ active = true }: { active?: boolean }) {
           type={activeInsight}
           insights={insights}
           filteredMatches={filteredMatches}
-          players={players}
+          players={groupPlayers}
           selectedWeekLabel={selectedWeekLabel}
           onClose={() => setActiveInsight(null)}
         />

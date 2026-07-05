@@ -28,8 +28,18 @@ const getTabFromHash = (hash: string): Tab => {
 export default function App() {
   const [activeTab, setActiveTab] = useState<Tab>(() => getTabFromHash(window.location.hash));
   const [prefilledMatch, setPrefilledMatch] = useState<{ t1p1: string; t1p2: string; t2p1: string; t2p2: string } | undefined>(undefined);
-  const { fetchDataFromServer, isLoading, error, theme, toggleTheme } = useStore();
+  const {
+    fetchDataFromServer,
+    isLoading,
+    error,
+    theme,
+    toggleTheme,
+    groups,
+    selectedGroupId,
+    setSelectedGroupId,
+  } = useStore();
   const isOnline = useOnlineStatus();
+  const groupOptions = groups.filter(group => group.isActive || group.id === selectedGroupId);
 
   const changeTab = (newTab: Tab, options?: { replace?: boolean }) => {
     if (activeTab === newTab) return;
@@ -265,6 +275,19 @@ export default function App() {
 
           {/* Action Items bên phải */}
           <div className="flex items-center gap-1.5 lg:gap-2.5 flex-shrink-0">
+            <select
+              value={selectedGroupId}
+              onChange={event => setSelectedGroupId(event.target.value)}
+              className="h-7 lg:h-9 max-w-[96px] sm:max-w-[130px] lg:max-w-[180px] rounded-lg lg:rounded-xl bg-slate-950/40 border border-white/10 px-2 text-[10px] lg:text-xs font-bold text-slate-200 focus:outline-none focus:border-teal-500 cursor-pointer"
+              title="Chọn nhóm người chơi"
+              aria-label="Chọn nhóm người chơi"
+            >
+              {groupOptions.map(group => (
+                <option key={group.id} value={group.id} className="bg-slate-950">
+                  {group.name}
+                </option>
+              ))}
+            </select>
             {renderDbStatus()}
             <button
               onClick={toggleTheme}

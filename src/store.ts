@@ -1,9 +1,10 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Match, Player, LeaderboardConfig, ScheduledSet, SessionCost, Court } from './types';
+import { Match, Player, PlayerGroup, LeaderboardConfig, ScheduledSet, SessionCost, Court } from './types';
 import { normalizeCostBreakdown } from './utils/costUtils';
 import { initialPlayers, initialMatches } from './data/seed';
+import { DEFAULT_GROUP_ID, DEFAULT_GROUP_NAME } from './constants/groups';
 
 const GOOGLE_SCRIPT_URL = import.meta.env.VITE_GOOGLE_SCRIPT_URL || '';
 
@@ -35,6 +36,44 @@ function mergeById<T extends { id: string }>(local: T[], remote?: T[] | null): T
   return [...remote, ...local.filter(item => !remoteIds.has(item.id))];
 }
 
+const defaultGroup: PlayerGroup = {
+  id: DEFAULT_GROUP_ID,
+  name: DEFAULT_GROUP_NAME,
+  isActive: true,
+};
+
+function normalizeGroups(groups?: PlayerGroup[] | null): PlayerGroup[] {
+  const source = groups && groups.length > 0 ? groups : [defaultGroup];
+  const normalized = source.map(group => ({
+    ...group,
+    isActive: group.isActive !== false,
+  }));
+
+  return normalized.some(group => group.id === DEFAULT_GROUP_ID)
+    ? normalized
+    : [defaultGroup, ...normalized];
+}
+
+function normalizePlayers(players: Player[] = [], groups: PlayerGroup[] = []): Player[] {
+  const fallbackGroupId = groups[0]?.id || DEFAULT_GROUP_ID;
+  return players.map(player => ({
+    ...player,
+    groupIds: Array.isArray(player.groupIds) && player.groupIds.length > 0
+      ? player.groupIds
+      : [fallbackGroupId],
+  }));
+}
+
+function normalizeGroupedItems<T extends { groupId?: string }>(
+  items: T[] = [],
+  groupId = DEFAULT_GROUP_ID
+): Array<T & { groupId: string }> {
+  return items.map(item => ({
+    ...item,
+    groupId: item.groupId || groupId,
+  }));
+}
+
 function mergeSessionCostsFromServer(
   local: SessionCost[],
   remote?: SessionCost[] | null
@@ -47,6 +86,8 @@ function mergeSessionCostsFromServer(
 }
 
 interface AppState {
+  groups: PlayerGroup[];
+  selectedGroupId: string;
   players: Player[];
   matches: Match[];
   config: LeaderboardConfig;
@@ -73,9 +114,13 @@ interface AppState {
   error: string | null;
 
   // Actions
+  setSelectedGroupId: (groupId: string) => void;
   setSelectedWeek: (week: string) => void;
   fetchDataFromServer: () => Promise<void>;
-  addPlayer: (name: string, gender?: 'male' | 'female') => void;
+  addGroup: (name: string) => void;
+  updateGroup: (id: string, updates: Partial<Omit<PlayerGroup, 'id'>>) => void;
+  archiveGroup: (id: string) => void;
+  addPlayer: (name: string, gender?: 'male' | 'female', groupIds?: string[]) => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   addMatch: (match: Omit<Match, 'id'>) => void;
   updateMatch: (id: string, updates: Partial<Match>) => void;
@@ -104,6 +149,7 @@ export const useStore = create<AppState>()(
     (set, get) => {
       // Hàm đồng bộ dữ liệu ngầm lên server Google Sheets
       const sync = async (updatedFields: Partial<AppState>) => {
+        const groups = updatedFields.groups ?? get().groups;
         const players = updatedFields.players ?? get().players;
         const matches = updatedFields.matches ?? get().matches;
         const config = updatedFields.config ?? get().config;
@@ -128,7 +174,7 @@ export const useStore = create<AppState>()(
           const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ players, matches, config: configRemote, schedule, sessionCosts, courts }),
+            body: JSON.stringify({ groups, players, matches, config: configRemote, schedule, sessionCosts, courts }),
           });
           if (!response.ok) {
             console.error('Lỗi phản hồi từ Google Scripts API');
@@ -143,6 +189,8 @@ export const useStore = create<AppState>()(
       };
 
       return {
+        groups: [defaultGroup],
+        selectedGroupId: DEFAULT_GROUP_ID,
         players: initialPlayers,
         matches: initialMatches,
         config: { minMatchesForMainBoard: 5 },
@@ -170,17 +218,24 @@ export const useStore = create<AppState>()(
               const localConfig = get().config;
               const localSessionCosts = get().sessionCosts;
               const localCourts = get().courts;
+              const groups = normalizeGroups(data.groups);
+              const fallbackGroupId = groups[0]?.id || DEFAULT_GROUP_ID;
+              const selectedGroupId = groups.some(group => group.id === get().selectedGroupId)
+                ? get().selectedGroupId
+                : fallbackGroupId;
               const mergedSessionCosts = mergeSessionCostsFromServer(
                 localSessionCosts,
-                data.sessionCosts
+                normalizeGroupedItems<SessionCost>(data.sessionCosts || [], fallbackGroupId)
               );
               const mergedCourts = mergeById(localCourts, data.courts);
 
               set({
-                players: data.players || [],
-                matches: data.matches || [],
+                groups,
+                selectedGroupId,
+                players: normalizePlayers(data.players || [], groups),
+                matches: normalizeGroupedItems<Match>(data.matches || [], fallbackGroupId),
                 config: mergeConfigFromServer(localConfig, data.config),
-                schedule: data.schedule || data.schedulerState?.schedule || [],
+                schedule: normalizeGroupedItems<ScheduledSet>(data.schedule || data.schedulerState?.schedule || [], fallbackGroupId),
                 sessionCosts: mergedSessionCosts,
                 courts: mergedCourts,
                 isLoading: false,
@@ -192,11 +247,14 @@ export const useStore = create<AppState>()(
                 !Array.isArray(data.sessionCosts) || data.sessionCosts.length === 0;
               const serverMissingCourts =
                 !Array.isArray(data.courts) || data.courts.length === 0;
+              const serverMissingGroups =
+                !Array.isArray(data.groups) || data.groups.length === 0;
               if (
                 (serverMissingCosts && mergedSessionCosts.length > 0) ||
-                (serverMissingCourts && mergedCourts.length > 0)
+                (serverMissingCourts && mergedCourts.length > 0) ||
+                serverMissingGroups
               ) {
-                sync({ sessionCosts: mergedSessionCosts, courts: mergedCourts });
+                sync({ groups, sessionCosts: mergedSessionCosts, courts: mergedCourts });
               }
             } else {
               set({ error: 'Không thể tải dữ liệu từ server', isLoading: false });
@@ -206,8 +264,51 @@ export const useStore = create<AppState>()(
           }
         },
 
-        addPlayer: (name, gender = 'male') => {
-          const newPlayers = [...get().players, { id: uuidv4(), name, isActive: true, gender }];
+        setSelectedGroupId: (selectedGroupId) => set({ selectedGroupId }),
+
+        addGroup: (name) => {
+          const trimmedName = name.trim();
+          if (!trimmedName) return;
+          const newGroups = [...get().groups, { id: uuidv4(), name: trimmedName, isActive: true }];
+          set({ groups: newGroups, selectedGroupId: newGroups[newGroups.length - 1].id });
+          sync({ groups: newGroups });
+        },
+
+        updateGroup: (id, updates) => {
+          const newGroups = get().groups.map(group =>
+            group.id === id ? { ...group, ...updates, name: updates.name?.trim() || group.name } : group
+          );
+          set({ groups: newGroups });
+          sync({ groups: newGroups });
+        },
+
+        archiveGroup: (id) => {
+          if (id === DEFAULT_GROUP_ID) return;
+          const newGroups = get().groups.map(group =>
+            group.id === id ? { ...group, isActive: false } : group
+          );
+          const activeGroup = newGroups.find(group => group.isActive);
+          set({
+            groups: newGroups,
+            selectedGroupId: get().selectedGroupId === id
+              ? activeGroup?.id || DEFAULT_GROUP_ID
+              : get().selectedGroupId,
+          });
+          sync({ groups: newGroups });
+        },
+
+        addPlayer: (name, gender = 'male', groupIds) => {
+          const selectedGroupId = get().selectedGroupId || DEFAULT_GROUP_ID;
+          const newPlayers = [
+            ...get().players,
+            {
+              id: uuidv4(),
+              name,
+              isActive: true,
+              gender,
+              groupIds: groupIds && groupIds.length > 0 ? groupIds : [selectedGroupId],
+            },
+          ];
           set({ players: newPlayers });
           sync({ players: newPlayers });
         },
@@ -219,7 +320,7 @@ export const useStore = create<AppState>()(
         },
         
         addMatch: (match) => {
-          const newMatches = [{ ...match, id: uuidv4() }, ...get().matches];
+          const newMatches = [{ ...match, id: uuidv4(), groupId: match.groupId || get().selectedGroupId }, ...get().matches];
           set({ matches: newMatches });
           sync({ matches: newMatches });
         },
@@ -249,17 +350,21 @@ export const useStore = create<AppState>()(
         
         importData: (jsonData) => {
           try {
-            const data = JSON.parse(jsonData);
-            if (data.players && data.matches && data.config) {
+          const data = JSON.parse(jsonData);
+          if (data.players && data.matches && data.config) {
+              const groups = normalizeGroups(data.groups);
+              const fallbackGroupId = groups[0]?.id || DEFAULT_GROUP_ID;
               const localConfig = get().config;
               const sessionCosts = mergeSessionCostsFromServer(
                 get().sessionCosts,
-                data.sessionCosts
+                normalizeGroupedItems<SessionCost>(data.sessionCosts || [], fallbackGroupId)
               );
               const courts = mergeById(get().courts, data.courts);
               const config = mergeConfigFromServer(localConfig, data.config);
-              set({ players: data.players, matches: data.matches, config, sessionCosts, courts });
-              sync({ players: data.players, matches: data.matches, config, sessionCosts, courts });
+              const players = normalizePlayers(data.players, groups);
+              const matches = normalizeGroupedItems<Match>(data.matches, fallbackGroupId);
+              set({ groups, selectedGroupId: fallbackGroupId, players, matches, config, sessionCosts, courts });
+              sync({ groups, players, matches, config, sessionCosts, courts });
               return true;
             }
             return false;
@@ -271,8 +376,10 @@ export const useStore = create<AppState>()(
         
         resetData: () => {
           const resetFields = {
-            players: initialPlayers,
-            matches: initialMatches,
+            groups: [defaultGroup],
+            selectedGroupId: DEFAULT_GROUP_ID,
+            players: normalizePlayers(initialPlayers, [defaultGroup]),
+            matches: normalizeGroupedItems<Match>(initialMatches, DEFAULT_GROUP_ID),
             config: { minMatchesForMainBoard: 5 },
             schedule: [] as ScheduledSet[],
             sessionCosts: [] as SessionCost[],
@@ -290,8 +397,9 @@ export const useStore = create<AppState>()(
         setSelectedWeek: (selectedWeek) => set({ selectedWeek }),
 
         saveScheduleToDB: (newSchedule: ScheduledSet[]) => {
-          set({ schedule: newSchedule });
-          sync({ schedule: newSchedule });
+          const schedule = normalizeGroupedItems(newSchedule, get().selectedGroupId);
+          set({ schedule });
+          sync({ schedule });
         },
 
         setSchedulerUIState: (schedulerUIState) => {
@@ -306,7 +414,7 @@ export const useStore = create<AppState>()(
         },
 
         addSessionCost: (session) => {
-          const newSessionCosts = [{ ...session, id: uuidv4() }, ...get().sessionCosts];
+          const newSessionCosts = [{ ...session, id: uuidv4(), groupId: session.groupId || get().selectedGroupId }, ...get().sessionCosts];
           set({ sessionCosts: newSessionCosts });
           sync({ sessionCosts: newSessionCosts });
         },
@@ -346,7 +454,16 @@ export const useStore = create<AppState>()(
     },
     {
       name: 'badminton-stats-storage',
+      version: 1,
       migrate: (persistedState: any, version: number) => {
+        const groups = normalizeGroups(persistedState?.groups);
+        const fallbackGroupId = groups[0]?.id || DEFAULT_GROUP_ID;
+        if (persistedState) {
+          persistedState.groups = groups;
+          persistedState.selectedGroupId = groups.some(group => group.id === persistedState.selectedGroupId)
+            ? persistedState.selectedGroupId
+            : fallbackGroupId;
+        }
         if (persistedState && persistedState.players) {
           persistedState.players = persistedState.players.map((p: any) => {
             if (!p.gender) {
@@ -354,8 +471,17 @@ export const useStore = create<AppState>()(
               const isFemale = femaleNames.some(f => p.name.toLowerCase().includes(f.toLowerCase()));
               p.gender = isFemale ? 'female' : 'male';
             }
+            if (!Array.isArray(p.groupIds) || p.groupIds.length === 0) {
+              p.groupIds = [fallbackGroupId];
+            }
             return p;
           });
+        }
+        if (persistedState?.matches) {
+          persistedState.matches = normalizeGroupedItems(persistedState.matches, fallbackGroupId);
+        }
+        if (persistedState?.schedule) {
+          persistedState.schedule = normalizeGroupedItems(persistedState.schedule, fallbackGroupId);
         }
         if (persistedState && !persistedState.sessionCosts) {
           persistedState.sessionCosts = [];
@@ -366,6 +492,7 @@ export const useStore = create<AppState>()(
         if (persistedState?.sessionCosts) {
           persistedState.sessionCosts = persistedState.sessionCosts.map((s: any) => ({
             ...s,
+            groupId: s.groupId || fallbackGroupId,
             costs: normalizeCostBreakdown(s.costs),
           }));
         }

@@ -14,6 +14,7 @@ import { requireAdminPassword } from '../utils/adminAuth';
 import { calculatePlayerEloBreakdown } from '../utils/calculations';
 import { useModalHistory } from '../hooks/useModalHistory';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
+import { getGroupMatches, getGroupPlayers } from '../utils/groupUtils';
 
 function formatMatchDateTime(date: string) {
   const parsed = parseISO(date);
@@ -216,17 +217,19 @@ export function MatchDetailModal({
 }
 
 export default function MatchHistory() {
-  const { matches, players, deleteMatch, updateMatch, selectedWeek, setSelectedWeek } = useStore();
+  const { matches, players, selectedGroupId, deleteMatch, updateMatch, selectedWeek, setSelectedWeek } = useStore();
   const isOnline = useOnlineStatus();
+  const groupPlayers = useMemo(() => getGroupPlayers(players, selectedGroupId), [players, selectedGroupId]);
+  const groupMatches = useMemo(() => getGroupMatches(matches, selectedGroupId), [matches, selectedGroupId]);
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>('all');
   const [page, setPage] = useState(1);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
 
-  const weekOptions = useMemo(() => getWeekOptions(matches), [matches]);
+  const weekOptions = useMemo(() => getWeekOptions(groupMatches), [groupMatches]);
 
   const filteredMatches = useMemo(() => {
-    let result = matches;
+    let result = groupMatches;
 
     // 1. Lọc theo tuần
     if (selectedWeek !== 'all') {
@@ -244,7 +247,7 @@ export default function MatchHistory() {
     }
 
     return result;
-  }, [matches, selectedWeek, selectedPlayerId, weekOptions]);
+  }, [groupMatches, selectedWeek, selectedPlayerId, weekOptions]);
   
   // States cho tính năng chỉnh sửa
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
@@ -374,7 +377,7 @@ export default function MatchHistory() {
                 className="w-full sm:w-[160px] text-xs h-9 bg-slate-900 border-white/10 text-white rounded-lg"
               >
                 <option value="all" className="bg-slate-900">Tất cả</option>
-                {players.map(p => (
+                {groupPlayers.map(p => (
                   <option key={p.id} value={p.id} className="bg-slate-900">
                     {p.name}
                   </option>
@@ -634,8 +637,8 @@ export default function MatchHistory() {
       {selectedMatch && (
         <MatchDetailModal
           match={selectedMatch}
-          matches={matches}
-          players={players}
+          matches={groupMatches}
+          players={groupPlayers}
           getPlayerName={getPlayerName}
           onClose={() => setSelectedMatch(null)}
         />
@@ -688,11 +691,11 @@ export default function MatchHistory() {
                   <div className="grid grid-cols-2 gap-2">
                     <Select value={editT1p1} onChange={e => setEditT1p1(e.target.value)} required>
                       <option value="" className="bg-slate-900">Chọn 1</option>
-                      {players.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                      {groupPlayers.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
                     </Select>
                     <Select value={editT1p2} onChange={e => setEditT1p2(e.target.value)} required>
                       <option value="" className="bg-slate-900">Chọn 2</option>
-                      {players.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                      {groupPlayers.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
                     </Select>
                   </div>
                 </div>
@@ -703,11 +706,11 @@ export default function MatchHistory() {
                   <div className="grid grid-cols-2 gap-2">
                     <Select value={editT2p1} onChange={e => setEditT2p1(e.target.value)} required>
                       <option value="" className="bg-slate-900">Chọn 1</option>
-                      {players.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                      {groupPlayers.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
                     </Select>
                     <Select value={editT2p2} onChange={e => setEditT2p2(e.target.value)} required>
                       <option value="" className="bg-slate-900">Chọn 2</option>
-                      {players.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
+                      {groupPlayers.map(p => <option key={p.id} value={p.id} className="bg-slate-900">{p.name}</option>)}
                     </Select>
                   </div>
                 </div>
