@@ -299,11 +299,15 @@ function SessionCostDetailModal({
   getPlayerName,
   getCourtName,
   onClose,
+  onEdit,
+  onDelete,
 }: {
   session: SessionCost;
   getPlayerName: (id: string) => string;
   getCourtName: (id?: string) => string | undefined;
   onClose: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
 }) {
   const { courts } = useStore();
   useModalHistory(onClose);
@@ -497,6 +501,26 @@ function SessionCostDetailModal({
               )}
             </div>
           </div>
+        </div>
+
+        {/* Footer actions — chỉ hiện trên mobile (sm:hidden) */}
+        <div className="sm:hidden flex-shrink-0 border-t border-white/10 bg-slate-900 p-3 px-4 flex gap-2.5">
+          <Button
+            variant="ghost"
+            className="flex-1 h-9 text-xs font-bold bg-teal-500/10 text-teal-400 border border-teal-500/20 hover:bg-teal-500/20 hover:text-teal-300 active:scale-95 transition-all duration-200 rounded-lg cursor-pointer gap-1.5"
+            onClick={() => { onClose(); onEdit(); }}
+          >
+            <Pencil className="w-3.5 h-3.5 text-teal-400" />
+            Chỉnh sửa
+          </Button>
+          <Button
+            variant="ghost"
+            className="flex-1 h-9 text-xs font-bold bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 hover:text-rose-300 active:scale-95 transition-all duration-200 rounded-lg cursor-pointer gap-1.5"
+            onClick={() => { onClose(); onDelete(); }}
+          >
+            <Trash2 className="w-3.5 h-3.5 text-rose-400" />
+            Xóa
+          </Button>
         </div>
       </div>
     </div>,
@@ -1121,8 +1145,8 @@ export default function SessionCosts() {
                           <span className="sm:hidden">Đ/người</span>
                           <span className="hidden sm:inline">Mỗi người</span>
                         </TableHead>
-                        <TableHead className="text-center whitespace-nowrap px-1 sm:px-2 w-14 sm:w-20">
-                          <span className="hidden sm:inline">Hành động</span>
+                        <TableHead className="hidden sm:table-cell text-center whitespace-nowrap px-1 sm:px-2 w-14 sm:w-20">
+                          <span>Hành động</span>
                         </TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1148,11 +1172,28 @@ export default function SessionCosts() {
                               }
                             }}
                           >
-                            <TableCell className="font-medium whitespace-nowrap px-1.5 sm:px-2.5 py-2 sm:py-2.5 tabular-nums">
-                              <span className="inline-flex items-center gap-1.5">
-                                <span className={`${dateMeta.markerClass} sm:hidden`} aria-hidden="true" />
-                                {formatSessionDate(session.date)}
-                              </span>
+                            <TableCell className="font-medium px-1.5 sm:px-2.5 py-2 sm:py-2.5">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums">
+                                  <span className={`${dateMeta.markerClass} sm:hidden`} aria-hidden="true" />
+                                  {formatSessionDate(session.date)}
+                                </span>
+                                {/* Sân + số sân — chỉ hiện trên mobile, ẩn từ md trở lên */}
+                                {(session.courtId || session.courtNumber) && (
+                                  <span className="md:hidden flex items-center gap-1 flex-wrap">
+                                    {session.courtId && (
+                                      <span className="text-[10px] text-slate-500 truncate max-w-[90px]">
+                                        {getCourtName(session.courtId)}
+                                      </span>
+                                    )}
+                                    {session.courtNumber && (
+                                      <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/20">
+                                        #{session.courtNumber}
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">
                               <span className={dateMeta.badgeClass}>
@@ -1176,7 +1217,7 @@ export default function SessionCosts() {
                             <TableCell className="text-right font-semibold text-teal-400 whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">
                               {formatVND(each)}
                             </TableCell>
-                            <TableCell className="px-1 sm:px-2 py-1.5 sm:py-2">
+                            <TableCell className="hidden sm:table-cell px-1 sm:px-2 py-1.5 sm:py-2">
                               <div className="flex items-center justify-center gap-0.5 sm:gap-1">
                                 <Button
                                   variant="ghost"
@@ -1253,6 +1294,11 @@ export default function SessionCosts() {
           getPlayerName={getPlayerName}
           getCourtName={getCourtName}
           onClose={() => setViewingSession(null)}
+          onEdit={() => openEditForm(viewingSession)}
+          onDelete={() => {
+            if (!requireAdminPassword()) return;
+            setDeletingId(viewingSession.id);
+          }}
         />
       )}
 
