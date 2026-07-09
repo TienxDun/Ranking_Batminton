@@ -1,4 +1,4 @@
-import { Match, Player, ScheduledSet, SessionCost } from '../types';
+import { Match, Player, SessionCost } from '../types';
 import { DEFAULT_GROUP_ID } from '../constants/groups';
 
 export function isPlayerInGroup(player: Player, groupId: string): boolean {
@@ -12,10 +12,6 @@ export function getGroupPlayers(players: Player[], groupId: string): Player[] {
 
 export function getGroupMatches(matches: Match[], groupId: string): Match[] {
   return matches.filter(match => (match.groupId || DEFAULT_GROUP_ID) === groupId);
-}
-
-export function getGroupSchedule(schedule: ScheduledSet[], groupId: string): ScheduledSet[] {
-  return schedule.filter(set => (set.groupId || DEFAULT_GROUP_ID) === groupId);
 }
 
 export function getGroupSessionCosts(sessionCosts: SessionCost[], groupId: string): SessionCost[] {

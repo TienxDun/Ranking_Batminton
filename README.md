@@ -64,7 +64,6 @@ Ranking_Batminton/
 │   │   ├── Dashboard.tsx
 │   │   ├── MatchForm.tsx
 │   │   ├── MatchHistory.tsx
-│   │   ├── MatchScheduler.tsx
 │   │   ├── PlayerManagement.tsx
 │   │   ├── PWAInstallPrompt.tsx
 │   │   └── ui/
@@ -111,12 +110,6 @@ Ranking_Batminton/
   - Bật / tắt trạng thái hoạt động
   - Đổi giới tính
   - Cấu hình số trận tối thiểu để lên BXH chính
-
-- `MatchScheduler`
-  - Chọn người chơi tham gia trong ngày
-  - Tạo lịch thi đấu theo set
-  - Cân bằng lượt thi đấu
-  - Cho phép đổi người trong từng set và tự cân đối lại
 
 ## Cài đặt
 

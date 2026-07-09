@@ -43,14 +43,6 @@ export type LeaderboardConfig = {
   paymentAccountName?: string;
 };
 
-export type ScheduledSet = {
-  id: string;
-  groupId: string;
-  setIndex: number;
-  team1: [string, string];
-  team2: [string, string];
-};
-
 export type CostLineItem = {
   unitPrice: number;
   quantity: number;

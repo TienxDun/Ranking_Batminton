@@ -13,7 +13,7 @@ import SessionCosts from './components/SessionCosts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import OfflineNotice from './components/OfflineNotice';
 import { Button } from './components/ui/button';
-import { Trophy, PlusCircle, History, Users, CalendarRange, Loader2, Sun, Moon, BarChart2, Settings, Wallet, AlertCircle, WifiOff } from 'lucide-react';
+import { Trophy, PlusCircle, History, Users, Loader2, Sun, Moon, BarChart2, Settings, Wallet, AlertCircle, WifiOff } from 'lucide-react';
 import { useStore } from './store';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 

@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { v4 as uuidv4 } from 'uuid';
-import { Match, Player, PlayerGroup, LeaderboardConfig, ScheduledSet, SessionCost, Court } from './types';
+import { Match, Player, PlayerGroup, LeaderboardConfig, SessionCost, Court } from './types';
 import { normalizeCostBreakdown } from './utils/costUtils';
 import { initialPlayers, initialMatches } from './data/seed';
 import { DEFAULT_GROUP_ID, DEFAULT_GROUP_NAME } from './constants/groups';
@@ -93,23 +93,8 @@ interface AppState {
   config: LeaderboardConfig;
   theme: 'dark' | 'light';
   selectedWeek: string;
-  // schedule: lịch thi đấu đã tạo — được sync lên DB, chia sẻ giữa mọi người dùng
-  schedule: ScheduledSet[];
   sessionCosts: SessionCost[];
   courts: Court[];
-  // schedulerUIState: trạng thái UI cục bộ — chỉ lưu localStorage, không sync
-  schedulerUIState?: {
-    selectedIds: string[];
-    numSets: number;
-    isGenerated: boolean;
-  };
-  /** @deprecated use schedule + schedulerUIState instead */
-  schedulerState?: {
-    selectedIds: string[];
-    numSets: number;
-    schedule: ScheduledSet[];
-    isGenerated: boolean;
-  };
   isLoading: boolean;
   error: string | null;
 
@@ -130,12 +115,6 @@ interface AppState {
   importData: (jsonData: string) => boolean;
   resetData: () => void;
   toggleTheme: () => void;
-  /** Lưu lịch thi đấu lên DB và chia sẻ với mọi người dùng */
-  saveScheduleToDB: (newSchedule: ScheduledSet[]) => void;
-  /** Cập nhật UI state cục bộ (selectedIds, numSets, isGenerated) — không sync DB */
-  setSchedulerUIState: (state: AppState['schedulerUIState']) => void;
-  /** @deprecated dùng saveScheduleToDB + setSchedulerUIState thay thế */
-  setSchedulerState: (state: AppState['schedulerState']) => void;
   addSessionCost: (session: Omit<SessionCost, 'id'>) => void;
   updateSessionCost: (id: string, updates: Partial<Omit<SessionCost, 'id'>>) => void;
   deleteSessionCost: (id: string) => void;
@@ -154,8 +133,6 @@ export const useStore = create<AppState>()(
         const matches = updatedFields.matches ?? get().matches;
         const config = updatedFields.config ?? get().config;
         const configRemote = configForRemoteSync(config);
-        // Chỉ sync `schedule` (lịch thi đấu đã tạo) lên DB — schedulerUIState là local only
-        const schedule = updatedFields.schedule !== undefined ? updatedFields.schedule : get().schedule;
         const sessionCosts = updatedFields.sessionCosts !== undefined ? updatedFields.sessionCosts : get().sessionCosts;
         const courts = updatedFields.courts !== undefined ? updatedFields.courts : get().courts;
 
@@ -174,7 +151,7 @@ export const useStore = create<AppState>()(
           const response = await fetch(GOOGLE_SCRIPT_URL, {
             method: 'POST',
             headers: { 'Content-Type': 'text/plain' },
-            body: JSON.stringify({ groups, players, matches, config: configRemote, schedule, sessionCosts, courts }),
+            body: JSON.stringify({ groups, players, matches, config: configRemote, sessionCosts, courts }),
           });
           if (!response.ok) {
             console.error('Lỗi phản hồi từ Google Scripts API');
@@ -196,11 +173,8 @@ export const useStore = create<AppState>()(
         config: { minMatchesForMainBoard: 5 },
         theme: 'dark',
         selectedWeek: 'all',
-        schedule: [],
         sessionCosts: [],
         courts: [],
-        schedulerUIState: undefined,
-        schedulerState: undefined, // legacy compat
         isLoading: false,
         error: null,
         
@@ -235,7 +209,6 @@ export const useStore = create<AppState>()(
                 players: normalizePlayers(data.players || [], groups),
                 matches: normalizeGroupedItems<Match>(data.matches || [], fallbackGroupId),
                 config: mergeConfigFromServer(localConfig, data.config),
-                schedule: normalizeGroupedItems<ScheduledSet>(data.schedule || data.schedulerState?.schedule || [], fallbackGroupId),
                 sessionCosts: mergedSessionCosts,
                 courts: mergedCourts,
                 isLoading: false,
@@ -381,10 +354,8 @@ export const useStore = create<AppState>()(
             players: normalizePlayers(initialPlayers, [defaultGroup]),
             matches: normalizeGroupedItems<Match>(initialMatches, DEFAULT_GROUP_ID),
             config: { minMatchesForMainBoard: 5 },
-            schedule: [] as ScheduledSet[],
             sessionCosts: [] as SessionCost[],
             courts: [] as Court[],
-            schedulerState: undefined
           };
           set(resetFields);
           sync(resetFields);
@@ -395,23 +366,6 @@ export const useStore = create<AppState>()(
           set({ theme: nextTheme });
         },
         setSelectedWeek: (selectedWeek) => set({ selectedWeek }),
-
-        saveScheduleToDB: (newSchedule: ScheduledSet[]) => {
-          const schedule = normalizeGroupedItems(newSchedule, get().selectedGroupId);
-          set({ schedule });
-          sync({ schedule });
-        },
-
-        setSchedulerUIState: (schedulerUIState) => {
-          set({ schedulerUIState });
-          // Không sync lên DB — chỉ lưu localStorage qua zustand persist
-        },
-
-        // Legacy: giữ lại để không break code cũ
-        setSchedulerState: (schedulerState) => {
-          set({ schedulerState });
-          // Không sync lên DB nữa — dùng saveScheduleToDB thay thế
-        },
 
         addSessionCost: (session) => {
           const newSessionCosts = [{ ...session, id: uuidv4(), groupId: session.groupId || get().selectedGroupId }, ...get().sessionCosts];
@@ -454,7 +408,7 @@ export const useStore = create<AppState>()(
     },
     {
       name: 'badminton-stats-storage',
-      version: 1,
+      version: 2,
       migrate: (persistedState: any, version: number) => {
         const groups = normalizeGroups(persistedState?.groups);
         const fallbackGroupId = groups[0]?.id || DEFAULT_GROUP_ID;
@@ -480,9 +434,9 @@ export const useStore = create<AppState>()(
         if (persistedState?.matches) {
           persistedState.matches = normalizeGroupedItems(persistedState.matches, fallbackGroupId);
         }
-        if (persistedState?.schedule) {
-          persistedState.schedule = normalizeGroupedItems(persistedState.schedule, fallbackGroupId);
-        }
+        delete persistedState?.schedule;
+        delete persistedState?.schedulerUIState;
+        delete persistedState?.schedulerState;
         if (persistedState && !persistedState.sessionCosts) {
           persistedState.sessionCosts = [];
         }
