@@ -1,9 +1,9 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { BarChart2 } from 'lucide-react';
-import { useStore } from '../store';
-import { calculateLeaderboard, calculateEloHistory } from '../utils/calculations';
-import { getWeekOptions } from '../utils/dateUtils';
-import { getGroupMatches, getGroupPlayers } from '../utils/groupUtils';
+import { useStore } from '../../store';
+import { calculateLeaderboard, calculateEloHistory } from '../../utils/calculations';
+import { getWeekOptions } from '../../utils/dateUtils';
+import { getGroupMatches, getGroupPlayers } from '../../utils/groupUtils';
 import {
   buildAnalyticsInsights,
   calculateActivityStats,
@@ -12,9 +12,9 @@ import {
   filterEloHistoryByWeek,
   filterMatchesByWeek,
   getTopDuos,
-} from '../utils/analytics';
-import { type InsightDetail } from './analytics/AnalyticsSupport';
-import { AnalyticsView } from './analytics/AnalyticsView';
+} from '../../utils/analytics';
+import { type InsightDetail } from './AnalyticsSupport';
+import { AnalyticsView } from './AnalyticsView';
 
 const PLAYER_COLORS: Record<string, string> = {
   'Khoa': '#2dd4bf',   // Teal

@@ -1,23 +1,23 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useStore } from '../store';
+import { useStore } from '../../store';
 import { format, parseISO } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
 import { Trash2, AlertTriangle, X, Calendar, Pencil, Eye, Trophy, Hash } from 'lucide-react';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Select } from './ui/select';
-import { Input } from './ui/input';
-import { Match, Player } from '../types';
-import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
-import { requireAdminPassword } from '../utils/adminAuth';
-import { calculatePlayerEloBreakdown } from '../utils/calculations';
-import { useModalHistory } from '../hooks/useModalHistory';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { getGroupMatches, getGroupPlayers } from '../utils/groupUtils';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Select } from '../ui/select';
+import { Input } from '../ui/input';
+import { Match, Player } from '../../types';
+import { getWeekOptions, isMatchInWeek } from '../../utils/dateUtils';
+import { requireAdminPassword } from '../../utils/adminAuth';
+import { calculatePlayerEloBreakdown } from '../../utils/calculations';
+import { useModalHistory } from '../../hooks/useModalHistory';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { getGroupMatches, getGroupPlayers } from '../../utils/groupUtils';
 
-export { MatchDetailModal } from './match-history/MatchDetailModal';
-import { MatchHistoryView } from './match-history/MatchHistoryView';
+export { MatchDetailModal } from './MatchDetailModal';
+import { MatchHistoryView } from './MatchHistoryView';
 
 export default function MatchHistory() {
   const { matches, players, selectedGroupId, deleteMatch, updateMatch, selectedWeek, setSelectedWeek } = useStore();

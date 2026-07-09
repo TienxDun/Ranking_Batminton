@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useStore } from '../store';
+import { useStore } from '../../store';
 import { format } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Select } from './ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Button } from '../ui/button';
+import { Input } from '../ui/input';
+import { Select } from '../ui/select';
 import { AlertCircle, WifiOff } from 'lucide-react';
-import { useOnlineStatus } from '../hooks/useOnlineStatus';
-import { getGroupPlayers } from '../utils/groupUtils';
+import { useOnlineStatus } from '../../hooks/useOnlineStatus';
+import { getGroupPlayers } from '../../utils/groupUtils';
 
 interface MatchFormProps {
   onSaved: () => void;

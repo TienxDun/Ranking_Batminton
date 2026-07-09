@@ -1,11 +1,11 @@
 import React from 'react';
 import { AlertCircle, CheckCircle2 } from 'lucide-react';
-import { Button } from './ui/button';
-import { requireAdminPassword } from '../utils/adminAuth';
-import { PaymentQrPreview, SessionCostDetailModal } from './session-costs/SessionCostComponents';
-import { SessionCostForm } from './session-costs/SessionCostForm';
-import { SessionCostsDashboard } from './session-costs/SessionCostsDashboard';
-import { useSessionCostsController } from './session-costs/useSessionCostsController';
+import { Button } from '../ui/button';
+import { requireAdminPassword } from '../../utils/adminAuth';
+import { PaymentQrPreview, SessionCostDetailModal } from './SessionCostComponents';
+import { SessionCostForm } from './SessionCostForm';
+import { SessionCostsDashboard } from './SessionCostsDashboard';
+import { useSessionCostsController } from './useSessionCostsController';
 
 export default function SessionCosts() {
   const {

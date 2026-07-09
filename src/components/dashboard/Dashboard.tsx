@@ -1,21 +1,21 @@
 import React, { CSSProperties, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { useStore } from '../store';
-import { calculateLeaderboard, calculatePlayerEloBreakdown, PlayerEloMatchBreakdown } from '../utils/calculations';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
-import { Select } from './ui/select';
+import { useStore } from '../../store';
+import { calculateLeaderboard, calculatePlayerEloBreakdown, PlayerEloMatchBreakdown } from '../../utils/calculations';
+import { Card, CardContent, CardHeader, CardTitle } from '../ui/card';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
+import { Select } from '../ui/select';
 import { Trophy, Medal, AlertCircle, X, User, TrendingUp, TrendingDown, Users, Swords, PlusCircle } from 'lucide-react';
-import { getWeekOptions, isMatchInWeek } from '../utils/dateUtils';
-import { Button } from './ui/button';
-import { Match, Player, PlayerStats } from '../types';
-import { useVisualViewportRect } from '../hooks/useVisualViewportRect';
-import { MatchDetailModal } from './MatchHistory';
-import { useModalHistory } from '../hooks/useModalHistory';
-import { getGroupMatches, getGroupPlayers } from '../utils/groupUtils';
+import { getWeekOptions, isMatchInWeek } from '../../utils/dateUtils';
+import { Button } from '../ui/button';
+import { Match, Player, PlayerStats } from '../../types';
+import { useVisualViewportRect } from '../../hooks/useVisualViewportRect';
+import { MatchDetailModal } from '../match-history/MatchHistory';
+import { useModalHistory } from '../../hooks/useModalHistory';
+import { getGroupMatches, getGroupPlayers } from '../../utils/groupUtils';
 
-import { PlayerDetailModal } from './dashboard/PlayerDetailModal';
-import { LeaderboardTable } from './dashboard/LeaderboardTable';
+import { PlayerDetailModal } from './PlayerDetailModal';
+import { LeaderboardTable } from './LeaderboardTable';
 
 export default function Dashboard() {
   const { players, matches, selectedGroupId, config, selectedWeek, setSelectedWeek } = useStore();

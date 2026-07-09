@@ -4,12 +4,12 @@
  */
 
 import React, { useState, useEffect } from 'react';
-import Dashboard from './components/Dashboard';
-import Analytics from './components/Analytics';
-import MatchForm from './components/MatchForm';
-import MatchHistory from './components/MatchHistory';
-import PlayerManagement from './components/PlayerManagement';
-import SessionCosts from './components/SessionCosts';
+import Dashboard from './components/dashboard/Dashboard';
+import Analytics from './components/analytics/Analytics';
+import MatchForm from './components/match-form/MatchForm';
+import MatchHistory from './components/match-history/MatchHistory';
+import PlayerManagement from './components/player-management/PlayerManagement';
+import SessionCosts from './components/session-costs/SessionCosts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import OfflineNotice from './components/OfflineNotice';
 import { Button } from './components/ui/button';
