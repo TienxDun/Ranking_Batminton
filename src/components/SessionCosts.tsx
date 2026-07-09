@@ -995,6 +995,142 @@ export default function SessionCosts() {
       ) : (
         /* Dashboard view: top widgets + full width history table */
         <div className="space-y-6">
+          {/* Lịch sử chi phí (rendered full-width at the top) */}
+          <Card>
+            <CardHeader className="text-center sm:text-left">
+              <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white">LỊCH SỬ CHI PHÍ</CardTitle>
+              <CardDescription>Các buổi đánh đã ghi nhận chi phí</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {sortedSessions.length === 0 ? (
+                <p className="text-sm text-slate-400 text-center py-8">
+                  Chưa có buổi đánh nào. Nhấn &quot;Thêm buổi đánh&quot; để bắt đầu.
+                </p>
+              ) : (
+                <div className="overflow-x-auto -mx-1 sm:mx-0">
+                  <Table className="text-xs sm:text-sm min-w-0">
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="whitespace-nowrap px-1.5 sm:px-2.5 py-2 sm:py-2.5">Ngày</TableHead>
+                        <TableHead className="hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Trạng thái</TableHead>
+                        <TableHead className="hidden md:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Sân</TableHead>
+                        <TableHead className="text-right hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Tổng</TableHead>
+                        <TableHead className="text-center whitespace-nowrap px-1.5 sm:px-2.5 w-10 sm:w-auto">Người</TableHead>
+                        <TableHead className="text-right whitespace-nowrap px-1.5 sm:px-2.5">
+                          <span className="sm:hidden">Đ/người</span>
+                          <span className="hidden sm:inline">Mỗi người</span>
+                        </TableHead>
+                        <TableHead className="hidden sm:table-cell text-center whitespace-nowrap px-1 sm:px-2 w-14 sm:w-20">
+                          <span>Hành động</span>
+                        </TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {sortedSessions.map(session => {
+                        const normalized = normalizeCostBreakdown(session.costs);
+                        const total = getTotalCost(normalized);
+                        const count = session.participantIds.length;
+                        const each = count > 0 ? splitCostEqually(total, session.participantIds)[0]?.amount ?? 0 : 0;
+                        const dateMeta = getSessionDateMeta(getSessionDateState(session.date, currentDateKey));
+                        return (
+                          <TableRow
+                            key={session.id}
+                            role="button"
+                            tabIndex={0}
+                            title={`Xem chi tiết chi phí ngày ${formatSessionDate(session.date)}`}
+                            className={`cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 ${dateMeta.rowClass}`}
+                            onClick={() => setViewingSession(session)}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                  e.preventDefault();
+                                  setViewingSession(session);
+                              }
+                            }}
+                          >
+                            <TableCell className="font-medium px-1.5 sm:px-2.5 py-2 sm:py-2.5">
+                              <div className="flex flex-col gap-0.5">
+                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums">
+                                  <span className={`${dateMeta.markerClass} sm:hidden`} aria-hidden="true" />
+                                  {formatSessionDate(session.date)}
+                                </span>
+                                {/* Sân + số sân — chỉ hiện trên mobile, ẩn từ md trở lên */}
+                                {(session.courtId || session.courtNumber) && (
+                                  <span className="md:hidden flex items-center gap-1 flex-wrap">
+                                    {session.courtId && (
+                                      <span className="text-[10px] text-slate-500 truncate max-w-[90px]">
+                                        {getCourtName(session.courtId)}
+                                      </span>
+                                    )}
+                                    {session.courtNumber && (
+                                      <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/20">
+                                        #{session.courtNumber}
+                                      </span>
+                                    )}
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">
+                              <span className={dateMeta.badgeClass}>
+                                {dateMeta.label}
+                              </span>
+                            </TableCell>
+                            <TableCell className="hidden md:table-cell text-slate-400 text-sm px-1.5 sm:px-2.5">
+                              <span className="flex items-center gap-1.5 min-w-0">
+                                <span className="truncate max-w-[80px]">{getCourtName(session.courtId) || '—'}</span>
+                                {session.courtNumber && (
+                                  <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/20">
+                                    #{session.courtNumber}
+                                  </span>
+                                )}
+                              </span>
+                            </TableCell>
+                            <TableCell className="text-right hidden sm:table-cell text-slate-300 whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">
+                              {formatVND(total)}
+                            </TableCell>
+                            <TableCell className="text-center whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">{count}</TableCell>
+                            <TableCell className="text-right font-semibold text-teal-400 whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">
+                              {formatVND(each)}
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell px-1 sm:px-2 py-1.5 sm:py-2">
+                              <div className="flex items-center justify-center gap-0.5 sm:gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    openEditForm(session);
+                                  }}
+                                  className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 cursor-pointer p-1 sm:p-1.5"
+                                  aria-label={`Sửa chi phí ngày ${formatSessionDate(session.date)}`}
+                                >
+                                  <Pencil className="w-3.5 h-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    if (!requireAdminPassword()) return;
+                                    setDeletingId(session.id);
+                                  }}
+                                  className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer p-1 sm:p-1.5"
+                                  aria-label={`Xóa chi phí ngày ${formatSessionDate(session.date)}`}
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* Top row: Stats and QR code panel side-by-side */}
           <div className="grid grid-cols-1 md:grid-cols-[1fr_280px] gap-4 items-stretch">
             {/* Left Card: Summary Stats and Quick Action Buttons */}
@@ -1119,142 +1255,6 @@ export default function SessionCosts() {
               </CardContent>
             </Card>
           )}
-
-          {/* Lịch sử chi phí (rendered full-width below top row/court manager) */}
-          <Card>
-            <CardHeader className="text-center sm:text-left">
-              <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white">LỊCH SỬ CHI PHÍ</CardTitle>
-              <CardDescription>Các buổi đánh đã ghi nhận chi phí</CardDescription>
-            </CardHeader>
-            <CardContent>
-              {sortedSessions.length === 0 ? (
-                <p className="text-sm text-slate-400 text-center py-8">
-                  Chưa có buổi đánh nào. Nhấn &quot;Thêm buổi đánh&quot; để bắt đầu.
-                </p>
-              ) : (
-                <div className="overflow-x-auto -mx-1 sm:mx-0">
-                  <Table className="text-xs sm:text-sm min-w-0">
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead className="whitespace-nowrap px-1.5 sm:px-2.5 py-2 sm:py-2.5">Ngày</TableHead>
-                        <TableHead className="hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Trạng thái</TableHead>
-                        <TableHead className="hidden md:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Sân</TableHead>
-                        <TableHead className="text-right hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">Tổng</TableHead>
-                        <TableHead className="text-center whitespace-nowrap px-1.5 sm:px-2.5 w-10 sm:w-auto">Người</TableHead>
-                        <TableHead className="text-right whitespace-nowrap px-1.5 sm:px-2.5">
-                          <span className="sm:hidden">Đ/người</span>
-                          <span className="hidden sm:inline">Mỗi người</span>
-                        </TableHead>
-                        <TableHead className="hidden sm:table-cell text-center whitespace-nowrap px-1 sm:px-2 w-14 sm:w-20">
-                          <span>Hành động</span>
-                        </TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {sortedSessions.map(session => {
-                        const normalized = normalizeCostBreakdown(session.costs);
-                        const total = getTotalCost(normalized);
-                        const count = session.participantIds.length;
-                        const each = count > 0 ? splitCostEqually(total, session.participantIds)[0]?.amount ?? 0 : 0;
-                        const dateMeta = getSessionDateMeta(getSessionDateState(session.date, currentDateKey));
-                        return (
-                          <TableRow
-                            key={session.id}
-                            role="button"
-                            tabIndex={0}
-                            title={`Xem chi tiết chi phí ngày ${formatSessionDate(session.date)}`}
-                            className={`cursor-pointer transition-colors hover:bg-white/5 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-teal-400 ${dateMeta.rowClass}`}
-                            onClick={() => setViewingSession(session)}
-                            onKeyDown={e => {
-                              if (e.key === 'Enter' || e.key === ' ') {
-                                e.preventDefault();
-                                setViewingSession(session);
-                              }
-                            }}
-                          >
-                            <TableCell className="font-medium px-1.5 sm:px-2.5 py-2 sm:py-2.5">
-                              <div className="flex flex-col gap-0.5">
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums">
-                                  <span className={`${dateMeta.markerClass} sm:hidden`} aria-hidden="true" />
-                                  {formatSessionDate(session.date)}
-                                </span>
-                                {/* Sân + số sân — chỉ hiện trên mobile, ẩn từ md trở lên */}
-                                {(session.courtId || session.courtNumber) && (
-                                  <span className="md:hidden flex items-center gap-1 flex-wrap">
-                                    {session.courtId && (
-                                      <span className="text-[10px] text-slate-500 truncate max-w-[90px]">
-                                        {getCourtName(session.courtId)}
-                                      </span>
-                                    )}
-                                    {session.courtNumber && (
-                                      <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/20">
-                                        #{session.courtNumber}
-                                      </span>
-                                    )}
-                                  </span>
-                                )}
-                              </div>
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">
-                              <span className={dateMeta.badgeClass}>
-                                {dateMeta.label}
-                              </span>
-                            </TableCell>
-                            <TableCell className="hidden md:table-cell text-slate-400 text-sm px-1.5 sm:px-2.5">
-                              <span className="flex items-center gap-1.5 min-w-0">
-                                <span className="truncate max-w-[80px]">{getCourtName(session.courtId) || '—'}</span>
-                                {session.courtNumber && (
-                                  <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/20">
-                                    #{session.courtNumber}
-                                  </span>
-                                )}
-                              </span>
-                            </TableCell>
-                            <TableCell className="text-right hidden sm:table-cell text-slate-300 whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">
-                              {formatVND(total)}
-                            </TableCell>
-                            <TableCell className="text-center whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">{count}</TableCell>
-                            <TableCell className="text-right font-semibold text-teal-400 whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">
-                              {formatVND(each)}
-                            </TableCell>
-                            <TableCell className="hidden sm:table-cell px-1 sm:px-2 py-1.5 sm:py-2">
-                              <div className="flex items-center justify-center gap-0.5 sm:gap-1">
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    openEditForm(session);
-                                  }}
-                                  className="text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 cursor-pointer p-1 sm:p-1.5"
-                                  aria-label={`Sửa chi phí ngày ${formatSessionDate(session.date)}`}
-                                >
-                                  <Pencil className="w-3.5 h-3.5" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={e => {
-                                    e.stopPropagation();
-                                    if (!requireAdminPassword()) return;
-                                    setDeletingId(session.id);
-                                  }}
-                                  className="text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 cursor-pointer p-1 sm:p-1.5"
-                                  aria-label={`Xóa chi phí ngày ${formatSessionDate(session.date)}`}
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
         </div>
       )}
 
