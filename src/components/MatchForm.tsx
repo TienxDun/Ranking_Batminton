@@ -20,7 +20,7 @@ interface MatchFormProps {
 }
 
 export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
-  const { players, selectedGroupId, addMatch } = useStore();
+  const { players, selectedGroupId, addMatch, isLoading } = useStore();
   const isOnline = useOnlineStatus();
   const activePlayers = getGroupPlayers(players, selectedGroupId).filter(p => p.isActive);
 
@@ -49,6 +49,11 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
 
     if (!isOnline) {
       setErrorMsg("Bạn đang offline. Vui lòng kết nối mạng trước khi lưu trận để điểm được cập nhật lên hệ thống.");
+      return;
+    }
+
+    if (isLoading) {
+      setErrorMsg("Hệ thống đang tải dữ liệu, vui lòng đợi một chút rồi thử lại!");
       return;
     }
 
@@ -153,8 +158,8 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
             </div>
           </div>
 
-          <Button type="submit" className="w-full" disabled={!isOnline}>
-            {isOnline ? 'Lưu Trận Đấu' : 'Đang offline - chưa thể lưu'}
+          <Button type="submit" className="w-full" disabled={!isOnline || isLoading}>
+            {!isOnline ? 'Đang offline - chưa thể lưu' : isLoading ? 'Đang tải dữ liệu...' : 'Lưu Trận Đấu'}
           </Button>
         </form>
       </CardContent>

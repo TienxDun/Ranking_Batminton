@@ -76,17 +76,33 @@ export default function App() {
     }
   }, [theme]);
 
+  // Fetch lần đầu khi app mở (sau khi Zustand hydrate xong)
   useEffect(() => {
-    const fetchWhenReady = () => fetchDataFromServer();
-
     if (useStore.persist.hasHydrated()) {
-      fetchWhenReady();
+      fetchDataFromServer();
       return;
     }
-
     return useStore.persist.onFinishHydration(() => {
-      fetchWhenReady();
+      fetchDataFromServer();
     });
+  }, [fetchDataFromServer]);
+
+  // Fetch lại khi user quay lại tab sau khi để nền
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchDataFromServer();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [fetchDataFromServer]);
+
+  // Fetch lại khi mạng reconnect sau khi offline
+  useEffect(() => {
+    const handleOnline = () => fetchDataFromServer();
+    window.addEventListener('online', handleOnline);
+    return () => window.removeEventListener('online', handleOnline);
   }, [fetchDataFromServer]);
 
   const renderDbStatus = () => {
