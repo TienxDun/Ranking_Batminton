@@ -444,6 +444,11 @@ export default function App() {
 
       {/* PWA Install Prompt — Android & iOS */}
       <PWAInstallPrompt />
+
+      {/* Footer — version */}
+      <footer className="text-center pb-28 md:pb-6 pt-2 text-[10px] text-slate-600 select-none pointer-events-none">
+        v{__APP_VERSION__}
+      </footer>
     </div>
   );
 }

@@ -345,9 +345,16 @@ function SessionCostDetailModal({
             <span className="text-[10px] font-bold uppercase tracking-wider">Chi tiết chi phí</span>
           </div>
           <h3 className="text-lg font-black text-white">{formatSessionDate(session.date)}</h3>
-          <p className="text-xs text-slate-400 mt-0.5">
-            {getCourtName(session.courtId) || 'Chưa chọn sân'}
-          </p>
+          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+            <p className="text-xs text-slate-400">
+              {getCourtName(session.courtId) || 'Chưa chọn sân'}
+            </p>
+            {session.courtNumber && (
+              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-md bg-teal-500/15 border border-teal-500/25 text-[10px] font-bold text-teal-400">
+                # Sân {session.courtNumber}
+              </span>
+            )}
+          </div>
           <Button
             variant="ghost"
             size="sm"
@@ -361,15 +368,15 @@ function SessionCostDetailModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto scroll-hide p-3.5 space-y-3.5">
           {/* Summary Row */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          <div className={`grid gap-2 ${session.courtNumber ? 'grid-cols-2 sm:grid-cols-5' : 'grid-cols-2 sm:grid-cols-4'}`}>
             {[
-              ['Tổng', formatVND(total), 'text-white'],
-              ['Người', String(session.participantIds.length), 'text-white'],
-              ['Mỗi người', formatVND(perPerson), 'text-teal-400'],
-              ['Sân', getCourtName(session.courtId) || 'N/A', 'text-slate-200'],
-            ].map(([label, value, color]) => {
-              const isCourtLabel = label === 'Sân';
-              const hasMap = isCourtLabel && court?.mapUrl && isValidMapUrl(court.mapUrl);
+              ['Tổng', formatVND(total), 'text-white', false],
+              ['Người', String(session.participantIds.length), 'text-white', false],
+              ['Mỗi người', formatVND(perPerson), 'text-teal-400', false],
+              ['Sân', getCourtName(session.courtId) || 'N/A', 'text-slate-200', true],
+              ...(session.courtNumber ? [['Số sân', `# ${session.courtNumber}`, 'text-teal-300', false] as [string, string, string, boolean]] : []),
+            ].map(([label, value, color, isCourtCard]) => {
+              const hasMap = isCourtCard && court?.mapUrl && isValidMapUrl(court.mapUrl);
 
               return (
                 <div
@@ -519,6 +526,7 @@ export default function SessionCosts() {
   const [costs, setCosts] = useState<SessionCostBreakdown>(emptyCostBreakdown());
   const [participantIds, setParticipantIds] = useState<string[]>([]);
   const [notes, setNotes] = useState('');
+  const [courtNumber, setCourtNumber] = useState('');
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [deletingCourtId, setDeletingCourtId] = useState<string | null>(null);
@@ -587,6 +595,7 @@ export default function SessionCosts() {
     setCosts(emptyCostBreakdown());
     setParticipantIds(getPlayersFromMatchesOnDate(groupMatches, todayKey()));
     setNotes('');
+    setCourtNumber('');
     setShowForm(false);
   };
 
@@ -598,6 +607,7 @@ export default function SessionCosts() {
     setCosts(emptyCostBreakdown());
     setParticipantIds(getPlayersFromMatchesOnDate(groupMatches, today));
     setNotes('');
+    setCourtNumber('');
     setShowForm(true);
   };
 
@@ -609,6 +619,7 @@ export default function SessionCosts() {
     setCosts(normalizeCostBreakdown(session.costs));
     setParticipantIds([...session.participantIds]);
     setNotes(session.notes || '');
+    setCourtNumber(session.courtNumber || '');
     setShowForm(true);
   };
 
@@ -650,6 +661,7 @@ export default function SessionCosts() {
       groupId: selectedGroupId,
       date,
       courtId: courtId || undefined,
+      courtNumber: courtNumber.trim() || undefined,
       costs: {
         ...costs,
         otherNote: costs.otherNote?.trim() || undefined,
@@ -793,6 +805,22 @@ export default function SessionCosts() {
                       Xem vị trí sân trên Google Maps <ExternalLink className="w-3 h-3" />
                     </a>
                   )}
+                </div>
+
+                {/* Số sân cụ thể */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-200 flex items-center gap-2">
+                    <span className="w-4 h-4 text-teal-400 text-base leading-none flex items-center justify-center font-black">#</span>
+                    Số sân (tùy chọn)
+                  </label>
+                  <Input
+                    type="text"
+                    placeholder="VD: 5, 10, A3..."
+                    value={courtNumber}
+                    onChange={e => setCourtNumber(e.target.value)}
+                    className="h-10"
+                  />
+                  <p className="text-xs text-slate-500">Số sân cụ thể trong địa điểm, nếu có nhiều sân</p>
                 </div>
               </div>
 
@@ -1131,8 +1159,15 @@ export default function SessionCosts() {
                                 {dateMeta.label}
                               </span>
                             </TableCell>
-                            <TableCell className="hidden md:table-cell text-slate-400 text-sm truncate max-w-[110px] px-1.5 sm:px-2.5">
-                              {getCourtName(session.courtId) || '—'}
+                            <TableCell className="hidden md:table-cell text-slate-400 text-sm px-1.5 sm:px-2.5">
+                              <span className="flex items-center gap-1.5 min-w-0">
+                                <span className="truncate max-w-[80px]">{getCourtName(session.courtId) || '—'}</span>
+                                {session.courtNumber && (
+                                  <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/20">
+                                    #{session.courtNumber}
+                                  </span>
+                                )}
+                              </span>
                             </TableCell>
                             <TableCell className="text-right hidden sm:table-cell text-slate-300 whitespace-nowrap px-1.5 sm:px-2.5 tabular-nums">
                               {formatVND(total)}

@@ -75,6 +75,7 @@ export type SessionCost = {
   groupId: string;
   date: string;
   courtId?: string;
+  courtNumber?: string; // Số sân cụ thể, VD: "5", "10", "A3"
   costs: SessionCostBreakdown;
   participantIds: string[];
   notes?: string;
