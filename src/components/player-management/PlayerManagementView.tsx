@@ -265,7 +265,7 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
     <Table>
       <TableHeader>
         <TableRow>
-          <TableHead className="whitespace-nowrap">Tên</TableHead>
+          <TableHead className="min-w-[150px] whitespace-nowrap">Tên</TableHead>
           <TableHead className="w-24 text-center whitespace-nowrap">Giới tính</TableHead>
           <TableHead className="min-w-[180px] whitespace-nowrap">Nhóm</TableHead>
           <TableHead className="w-28 text-center whitespace-nowrap hidden sm:table-cell">Trạng Thái</TableHead>
@@ -275,7 +275,7 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
       <TableBody>
         {players.map(p => (
           <TableRow key={p.id} className={!p.isActive ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-            <TableCell className="whitespace-nowrap">
+            <TableCell className="min-w-[150px] whitespace-nowrap">
               <Input 
                 value={p.name} 
                 onChange={e => runAdminAction(() => updatePlayer(p.id, { name: e.target.value }))}
