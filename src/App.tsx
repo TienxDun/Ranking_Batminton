@@ -447,7 +447,7 @@ export default function App() {
 
       {/* Footer — version */}
       <footer className="text-center pb-28 md:pb-6 pt-2 text-[10px] text-slate-600 select-none pointer-events-none">
-        v{__APP_VERSION__}
+        v1.0.1
       </footer>
     </div>
   );
