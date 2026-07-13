@@ -8,7 +8,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui
 import { Input } from '../ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../ui/table';
 import { PaymentQrPanel } from './SessionCostComponents';
-import { formatSessionDate, getSessionDateMeta } from './sessionCostDate';
+import { formatSessionDate, getSessionDateMeta, getWeekdayName, formatOnlyDate } from './sessionCostDate';
 
 export interface SessionCostsDashboardProps {
   sessions: SessionCost[];
@@ -92,25 +92,36 @@ function SessionHistory(props: SessionCostsDashboardProps) {
                           >
                             <TableCell className="font-medium px-1.5 sm:px-2.5 py-2 sm:py-2.5">
                               <div className="flex flex-col gap-0.5">
-                                <span className="inline-flex items-center gap-1.5 whitespace-nowrap tabular-nums">
-                                  <span className={`${dateMeta.markerClass} sm:hidden`} aria-hidden="true" />
-                                  {formatSessionDate(session.date)}
-                                </span>
-                                {/* Sân + số sân — chỉ hiện trên mobile, ẩn từ md trở lên */}
-                                {(session.courtId || session.courtNumber) && (
-                                  <span className="md:hidden flex items-center gap-1 flex-wrap">
-                                    {session.courtId && (
-                                      <span className="text-[10px] text-slate-500 truncate max-w-[90px]">
-                                        {getCourtName(session.courtId)}
+                                <div className="flex items-stretch gap-2.5">
+                                  <span className={`w-[3px] rounded-full sm:hidden shrink-0 ${
+                                    dateMeta.label === 'Sắp tới' ? 'bg-blue-400' :
+                                    dateMeta.label === 'Hôm nay' ? 'bg-teal-400' : 'bg-slate-500/50'
+                                  }`} aria-hidden="true" />
+                                  <div className="flex flex-col text-left">
+                                    <span className="text-[10px] sm:text-xs text-slate-400 font-normal leading-tight">
+                                      <span className="sm:hidden">{getWeekdayName(session.date, { short: true })}</span>
+                                      <span className="hidden sm:inline">{getWeekdayName(session.date)}</span>
+                                    </span>
+                                    <span className="text-xs sm:text-sm font-semibold text-slate-200 tabular-nums leading-tight">
+                                      {formatOnlyDate(session.date)}
+                                    </span>
+                                    {/* Sân + số sân — chỉ hiện trên mobile, ẩn từ md trở lên */}
+                                    {(session.courtId || session.courtNumber) && (
+                                      <span className="md:hidden flex items-center gap-1 flex-wrap mt-0.5">
+                                        {session.courtId && (
+                                          <span className="text-[10px] text-slate-500 truncate max-w-[90px]">
+                                            {getCourtName(session.courtId)}
+                                          </span>
+                                        )}
+                                        {session.courtNumber && (
+                                          <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/20">
+                                            #{session.courtNumber}
+                                          </span>
+                                        )}
                                       </span>
                                     )}
-                                    {session.courtNumber && (
-                                      <span className="flex-shrink-0 px-1 py-0.5 rounded text-[9px] font-bold bg-teal-500/15 text-teal-400 border border-teal-500/20">
-                                        #{session.courtNumber}
-                                      </span>
-                                    )}
-                                  </span>
-                                )}
+                                  </div>
+                                </div>
                               </div>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell whitespace-nowrap px-1.5 sm:px-2.5">

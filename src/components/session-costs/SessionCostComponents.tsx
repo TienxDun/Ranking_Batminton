@@ -17,18 +17,13 @@ import {
   splitCostEqually,
 } from '../../utils/costUtils';
 import { useModalHistory } from '../../hooks/useModalHistory';
+import { formatSessionDate } from './sessionCostDate';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Input } from '../ui/input';
 import { Download, ExternalLink, MapPin, Pencil, QrCode, Trash2, Users, Wallet, X } from 'lucide-react';
 
-function formatSessionDate(date: string): string {
-  try {
-    return new Intl.DateTimeFormat('vi-VN').format(new Date(`${date}T00:00:00`));
-  } catch {
-    return date;
-  }
-}
+
 
 function downloadPaymentQr() {
   const confirmed = window.confirm('Tải ảnh QR này về máy?');

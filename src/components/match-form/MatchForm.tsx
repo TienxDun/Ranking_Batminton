@@ -25,6 +25,7 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
   const activePlayers = getGroupPlayers(players, selectedGroupId).filter(p => p.isActive);
 
   const [date, setDate] = useState(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+  const [isTimeEdited, setIsTimeEdited] = useState(false);
   const [t1p1, setT1p1] = useState(initialData?.t1p1 || '');
   const [t1p2, setT1p2] = useState(initialData?.t1p2 || '');
   const [t2p1, setT2p1] = useState(initialData?.t2p1 || '');
@@ -72,9 +73,11 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
       return;
     }
 
+    const finalDate = isTimeEdited ? date : format(new Date(), "yyyy-MM-dd'T'HH:mm");
+
     addMatch({
       groupId: selectedGroupId,
-      date,
+      date: finalDate,
       team1: [t1p1, t1p2],
       team2: [t2p1, t2p2],
       isScoreExact: true,
@@ -85,6 +88,8 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
     // Reset some fields
     setT1p1(''); setT1p2(''); setT2p1(''); setT2p2('');
     setScore1(''); setScore2('');
+    setDate(format(new Date(), "yyyy-MM-dd'T'HH:mm"));
+    setIsTimeEdited(false);
     onSaved();
   };
 
@@ -111,7 +116,7 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
         <form onSubmit={handleSubmit} className="space-y-6">
           <div>
             <label className="block text-sm font-medium mb-1">Thời gian đấu</label>
-            <Input type="datetime-local" value={date} onChange={e => setDate(e.target.value)} required />
+            <Input type="datetime-local" value={date} onChange={e => { setDate(e.target.value); setIsTimeEdited(true); }} required />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

@@ -4,12 +4,44 @@ export function todayKey(): string {
   return format(new Date(), 'yyyy-MM-dd');
 }
 
-export function formatSessionDate(date: string): string {
+export function getWeekdayName(date: string, options?: { short?: boolean }): string {
   try {
-    return format(parseISO(date), 'dd/MM/yyyy');
+    const daysFull = ['Chủ Nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+    const daysShort = ['CN', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7'];
+    
+    const dateStr = date.slice(0, 10);
+    const parsedDate = new Date(`${dateStr}T00:00:00`);
+    if (isNaN(parsedDate.getTime())) {
+      return '';
+    }
+    const dayIndex = parsedDate.getDay();
+    return options?.short ? daysShort[dayIndex] : daysFull[dayIndex];
+  } catch {
+    return '';
+  }
+}
+
+export function formatOnlyDate(date: string): string {
+  try {
+    const dateStr = date.slice(0, 10);
+    const parsedDate = new Date(`${dateStr}T00:00:00`);
+    if (isNaN(parsedDate.getTime())) {
+      return date;
+    }
+    const day = String(parsedDate.getDate()).padStart(2, '0');
+    const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
+    const year = parsedDate.getFullYear();
+    return `${day}/${month}/${year}`;
   } catch {
     return date;
   }
+}
+
+export function formatSessionDate(date: string, options?: { short?: boolean }): string {
+  const weekday = getWeekdayName(date, options);
+  const dateStr = formatOnlyDate(date);
+  if (!weekday) return dateStr;
+  return `${weekday}, ${dateStr}`;
 }
 
 type SessionDateState = 'future' | 'today' | 'past';
