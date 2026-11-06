@@ -1,6 +1,7 @@
 import React from 'react';
-import { AlertCircle, CheckCircle2, Layers3, Mars, Minus, Plus, UserPlus, Venus } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Layers3, Mars, Minus, Plus, Trash2, UserPlus, Venus } from 'lucide-react';
 import { LeaderboardConfig, Player, PlayerGroup } from '../../types';
+import { DEFAULT_GROUP_ID } from '../../constants/groups';
 import { Button } from '../ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { Input } from '../ui/input';
@@ -22,6 +23,7 @@ export interface PlayerManagementViewModel {
   handleAddGroup: (event: React.FormEvent) => void;
   updateGroup: (id: string, updates: Partial<Omit<PlayerGroup, 'id'>>) => void;
   archiveGroup: (id: string) => void;
+  deleteGroup: (id: string) => void;
   newName: string;
   setNewName: React.Dispatch<React.SetStateAction<string>>;
   newGender: 'male' | 'female';
@@ -32,6 +34,11 @@ export interface PlayerManagementViewModel {
   players: Player[];
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   togglePlayerGroup: (playerId: string, groupId: string) => void;
+  deletingGroup: PlayerGroup | null;
+  setDeletingGroup: React.Dispatch<React.SetStateAction<PlayerGroup | null>>;
+  handleDeleteGroupClick: (group: PlayerGroup) => void;
+  confirmDeleteGroup: () => void;
+  deletingGroupStats: { playersCount: number; matchesCount: number; sessionCostsCount: number };
 }
 
 function SystemSettingsCard({ model }: { model: PlayerManagementViewModel }) {
@@ -86,7 +93,7 @@ function GroupManager({ model }: { model: PlayerManagementViewModel }) {
   const {
     isLight, runAdminAction, activeGroups, groups,
     newGroupName, setNewGroupName, handleAddGroup,
-    updateGroup, archiveGroup,
+    updateGroup, archiveGroup, handleDeleteGroupClick,
   } = model;
 
   // Compute CSS classes locally based on isLight
@@ -159,6 +166,7 @@ function GroupManager({ model }: { model: PlayerManagementViewModel }) {
                   onClick={() => runAdminAction(() => archiveGroup(group.id))}
                   className={`h-8 px-2 text-xs cursor-pointer ${isLight ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-500/10' : 'text-rose-400 hover:text-rose-300 hover:bg-rose-500/10'}`}
                   disabled={activeGroups.length <= 1}
+                  title="Ẩn nhóm khỏi thanh chọn"
                 >
                   Ẩn
                 </Button>
@@ -169,8 +177,21 @@ function GroupManager({ model }: { model: PlayerManagementViewModel }) {
                   size="sm"
                   onClick={() => runAdminAction(() => updateGroup(group.id, { isActive: true }))}
                   className={`h-8 px-2 text-xs cursor-pointer ${isLight ? 'text-teal-600 hover:text-teal-700 hover:bg-teal-500/10' : 'text-teal-400 hover:text-teal-300 hover:bg-teal-500/10'}`}
+                  title="Hiện lại nhóm"
                 >
                   Hiện
+                </Button>
+              )}
+              {group.id !== DEFAULT_GROUP_ID && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleDeleteGroupClick(group)}
+                  className={`h-8 px-2 text-xs cursor-pointer ${isLight ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-500/10' : 'text-rose-400 hover:text-rose-300 hover:bg-rose-500/10'}`}
+                  title="Xóa nhóm"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
                 </Button>
               )}
             </div>
@@ -352,6 +373,73 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
   );
 }
 
+function DeleteGroupModal({ model }: { model: PlayerManagementViewModel }) {
+  const { deletingGroup, setDeletingGroup, confirmDeleteGroup, deletingGroupStats, isLight } = model;
+  if (!deletingGroup) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className={`border rounded-2xl p-5 sm:p-6 max-w-sm sm:max-w-md w-full shadow-2xl space-y-4 ${
+        isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-white/10'
+      }`}>
+        <div className="flex items-center gap-3">
+          <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center">
+            <Trash2 className="w-5 h-5" />
+          </div>
+          <div>
+            <h3 className={`text-base font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              Xóa nhóm "{deletingGroup.name}"
+            </h3>
+            <p className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              Hành động này sẽ xóa vĩnh viễn nhóm
+            </p>
+          </div>
+        </div>
+
+        <div className={`p-3 rounded-xl border text-xs space-y-1.5 ${
+          isLight ? 'bg-slate-50 border-slate-200 text-slate-600' : 'bg-slate-950/50 border-white/5 text-slate-300'
+        }`}>
+          <p className="font-semibold text-rose-500">Lưu ý khi xóa nhóm:</p>
+          <ul className="list-disc list-inside space-y-1 pl-1">
+            <li>
+              <span>Có <strong>{deletingGroupStats.playersCount}</strong> người chơi thuộc nhóm này.</span>
+              <span className="block text-[11px] opacity-80 pl-4">Họ sẽ được giữ lại (nếu không còn nhóm nào sẽ chuyển về nhóm mặc định).</span>
+            </li>
+            {deletingGroupStats.matchesCount > 0 && (
+              <li className="text-rose-400 font-medium">
+                Sẽ xóa <strong>{deletingGroupStats.matchesCount}</strong> trận đấu thuộc nhóm này.
+              </li>
+            )}
+            {deletingGroupStats.sessionCostsCount > 0 && (
+              <li className="text-rose-400 font-medium">
+                Sẽ xóa <strong>{deletingGroupStats.sessionCostsCount}</strong> buổi thu chi thuộc nhóm này.
+              </li>
+            )}
+          </ul>
+        </div>
+
+        <div className="flex gap-2 sm:gap-3 pt-2">
+          <Button
+            type="button"
+            onClick={confirmDeleteGroup}
+            className="flex-1 bg-rose-500 hover:bg-rose-600 text-white font-semibold cursor-pointer h-9 text-xs sm:text-sm"
+          >
+            Xóa vĩnh viễn
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => setDeletingGroup(null)}
+            className="flex-1 cursor-pointer h-9 text-xs sm:text-sm"
+          >
+            Hủy
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function PlayerManagementView({ model }: { model: PlayerManagementViewModel }) {
   const { notification } = model;
 
@@ -386,6 +474,8 @@ export function PlayerManagementView({ model }: { model: PlayerManagementViewMod
           <PlayerTable model={model} />
         </CardContent>
       </Card>
+
+      <DeleteGroupModal model={model} />
     </div>
   );
 }

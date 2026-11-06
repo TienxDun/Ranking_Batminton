@@ -105,6 +105,7 @@ interface AppState {
   addGroup: (name: string) => void;
   updateGroup: (id: string, updates: Partial<Omit<PlayerGroup, 'id'>>) => void;
   archiveGroup: (id: string) => void;
+  deleteGroup: (id: string) => void;
   addPlayer: (name: string, gender?: 'male' | 'female', groupIds?: string[]) => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   addMatch: (match: Omit<Match, 'id'>) => void;
@@ -268,6 +269,48 @@ export const useStore = create<AppState>()(
               : get().selectedGroupId,
           });
           sync({ groups: newGroups });
+        },
+
+        deleteGroup: (id) => {
+          if (id === DEFAULT_GROUP_ID) return;
+          const currentGroups = get().groups;
+          if (currentGroups.length <= 1) return;
+
+          const newGroups = currentGroups.filter(group => group.id !== id);
+          const activeGroup = newGroups.find(group => group.isActive);
+          const fallbackGroupId = activeGroup?.id || newGroups[0]?.id || DEFAULT_GROUP_ID;
+
+          const newSelectedGroupId = get().selectedGroupId === id
+            ? fallbackGroupId
+            : get().selectedGroupId;
+
+          const newPlayers = get().players.map(player => {
+            const currentGroupIds = player.groupIds || [DEFAULT_GROUP_ID];
+            if (!currentGroupIds.includes(id)) return player;
+            const updatedGroupIds = currentGroupIds.filter(gId => gId !== id);
+            return {
+              ...player,
+              groupIds: updatedGroupIds.length > 0 ? updatedGroupIds : [fallbackGroupId],
+            };
+          });
+
+          const newMatches = get().matches.filter(match => (match.groupId || DEFAULT_GROUP_ID) !== id);
+          const newSessionCosts = get().sessionCosts.filter(session => (session.groupId || DEFAULT_GROUP_ID) !== id);
+
+          set({
+            groups: newGroups,
+            selectedGroupId: newSelectedGroupId,
+            players: newPlayers,
+            matches: newMatches,
+            sessionCosts: newSessionCosts,
+          });
+
+          sync({
+            groups: newGroups,
+            players: newPlayers,
+            matches: newMatches,
+            sessionCosts: newSessionCosts,
+          });
         },
 
         addPlayer: (name, gender = 'male', groupIds) => {
