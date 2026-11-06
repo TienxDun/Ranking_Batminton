@@ -1,4 +1,5 @@
 import React from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle, CheckCircle2, Layers3, Mars, Minus, Plus, Trash2, UserPlus, Venus } from 'lucide-react';
 import { LeaderboardConfig, Player, PlayerGroup } from '../../types';
 import { DEFAULT_GROUP_ID } from '../../constants/groups';
@@ -375,12 +376,12 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
 
 function DeleteGroupModal({ model }: { model: PlayerManagementViewModel }) {
   const { deletingGroup, setDeletingGroup, confirmDeleteGroup, deletingGroupStats, isLight } = model;
-  if (!deletingGroup) return null;
+  if (!deletingGroup || typeof document === 'undefined') return null;
 
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
+  return createPortal(
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-in fade-in duration-200">
       <div className={`border rounded-2xl p-5 sm:p-6 max-w-sm sm:max-w-md w-full shadow-2xl space-y-4 ${
-        isLight ? 'bg-white border-slate-200' : 'bg-slate-900 border-white/10'
+        isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-white/10 text-slate-100'
       }`}>
         <div className="flex items-center gap-3">
           <div className="p-2.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-500 flex items-center justify-center">
@@ -406,12 +407,12 @@ function DeleteGroupModal({ model }: { model: PlayerManagementViewModel }) {
               <span className="block text-[11px] opacity-80 pl-4">Họ sẽ được giữ lại (nếu không còn nhóm nào sẽ chuyển về nhóm mặc định).</span>
             </li>
             {deletingGroupStats.matchesCount > 0 && (
-              <li className="text-rose-400 font-medium">
+              <li className="text-rose-500 font-medium">
                 Sẽ xóa <strong>{deletingGroupStats.matchesCount}</strong> trận đấu thuộc nhóm này.
               </li>
             )}
             {deletingGroupStats.sessionCostsCount > 0 && (
-              <li className="text-rose-400 font-medium">
+              <li className="text-rose-500 font-medium">
                 Sẽ xóa <strong>{deletingGroupStats.sessionCostsCount}</strong> buổi thu chi thuộc nhóm này.
               </li>
             )}
@@ -430,13 +431,18 @@ function DeleteGroupModal({ model }: { model: PlayerManagementViewModel }) {
             type="button"
             variant="ghost"
             onClick={() => setDeletingGroup(null)}
-            className="flex-1 cursor-pointer h-9 text-xs sm:text-sm"
+            className={`flex-1 cursor-pointer h-9 text-xs sm:text-sm ${
+              isLight
+                ? 'border border-slate-200 text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                : 'text-slate-300 hover:bg-white/5 hover:text-white'
+            }`}
           >
             Hủy
           </Button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
