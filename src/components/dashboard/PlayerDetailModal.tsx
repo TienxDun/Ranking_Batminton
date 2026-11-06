@@ -66,6 +66,7 @@ function summarizeById(
 
 interface PlayerDetailContentModel {
   player: PlayerStats & { displayRank: number };
+  initialRating: number;
   totalDelta: number;
   biggestGain?: PlayerEloMatchBreakdown;
   biggestLoss?: PlayerEloMatchBreakdown;
@@ -77,13 +78,13 @@ interface PlayerDetailContentModel {
 }
 
 function PlayerSummary({ model }: { model: PlayerDetailContentModel }) {
-  const { player, totalDelta } = model;
+  const { player, initialRating, totalDelta } = model;
   return (
     <>
           <div className="grid grid-cols-2 lg:grid-cols-6 gap-2 sm:gap-3">
             {[
               ['Elo', player.rating, 'text-teal-400'],
-              ['Từ mốc 1500', formatDelta(totalDelta), totalDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'],
+              [`Từ mốc ${initialRating}`, formatDelta(totalDelta), totalDelta >= 0 ? 'text-emerald-400' : 'text-rose-400'],
               ['Trận', player.totalMatches, 'text-white'],
               ['Thắng', player.wins, 'text-emerald-400'],
               ['Thua', player.losses, 'text-rose-400'],
@@ -100,7 +101,7 @@ function PlayerSummary({ model }: { model: PlayerDetailContentModel }) {
 }
 
 function PlayerInsights({ model }: { model: PlayerDetailContentModel }) {
-  const { totalDelta, biggestGain, biggestLoss, partnerStats, opponentStats, getPlayerName, selectMatch: setSelectedMatch } = model;
+  const { initialRating, totalDelta, biggestGain, biggestLoss, partnerStats, opponentStats, getPlayerName, selectMatch: setSelectedMatch } = model;
   return (
     <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
@@ -114,7 +115,7 @@ function PlayerInsights({ model }: { model: PlayerDetailContentModel }) {
               <CardContent className="p-3 pt-0 space-y-2.5 text-sm">
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-slate-400">Elo khởi điểm</span>
-                  <span className="font-bold text-slate-200 tabular-nums">1500</span>
+                  <span className="font-bold text-slate-200 tabular-nums">{initialRating}</span>
                 </div>
                 <div className="flex items-center justify-between gap-3">
                   <span className="text-slate-400">Tổng thay đổi</span>
@@ -335,7 +336,9 @@ export function PlayerDetailModal({
   );
 
   const getPlayerName = (id: string) => players.find(p => p.id === id)?.name || 'Unknown';
-  const totalDelta = player.rating - 1500;
+  const originalPlayer = players.find(p => p.id === player.playerId);
+  const initialRating = originalPlayer?.initialRating ?? 1500;
+  const totalDelta = player.rating - initialRating;
   const biggestGain = breakdown.length > 0
     ? breakdown.reduce((max, item) => item.delta > max.delta ? item : max)
     : null;
@@ -345,7 +348,7 @@ export function PlayerDetailModal({
   const partnerStats = summarizeById(breakdown, item => [item.partnerId]);
   const opponentStats = summarizeById(breakdown, item => item.opponentIds);
   const contentModel: PlayerDetailContentModel = {
-    player, totalDelta, biggestGain, biggestLoss, partnerStats, opponentStats,
+    player, initialRating, totalDelta, biggestGain, biggestLoss, partnerStats, opponentStats,
     breakdown, getPlayerName, selectMatch: setSelectedMatch,
   };
   const mobileOverlayStyle: CSSProperties | undefined = isMobileViewport ? {

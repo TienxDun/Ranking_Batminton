@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { useStore } from '../../store';
 import { requireAdminPassword } from '../../utils/adminAuth';
+import { calculateLeaderboard } from '../../utils/calculations';
 import { PlayerManagementView } from './PlayerManagementView';
 import { DEFAULT_GROUP_ID } from '../../constants/groups';
 import { Player, PlayerGroup } from '../../types';
@@ -25,6 +26,7 @@ export default function PlayerManagement() {
   } = useStore();
   const [newName, setNewName] = useState('');
   const [newGender, setNewGender] = useState<'male' | 'female'>('male');
+  const [newElo, setNewElo] = useState('1500');
   const [newGroupName, setNewGroupName] = useState('');
   const [newPlayerGroupIds, setNewPlayerGroupIds] = useState<string[]>([selectedGroupId]);
   const [notification, setNotification] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -34,6 +36,16 @@ export default function PlayerManagement() {
   
   const activeGroups = groups.filter(group => group.isActive);
   const isLight = theme === 'light';
+
+  // Tính toán bảng Elo hiện tại cho từng người chơi
+  const leaderboard = useMemo(() => calculateLeaderboard(players, matches), [players, matches]);
+  const playerEloMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    leaderboard.forEach(item => {
+      map[item.playerId] = item.rating;
+    });
+    return map;
+  }, [leaderboard]);
 
   const showNotification = (type: 'success' | 'error', text: string) => {
     setNotification({ type, text });
@@ -46,12 +58,33 @@ export default function PlayerManagement() {
     e.preventDefault();
     if (newName.trim()) {
       const groupIds = newPlayerGroupIds.length > 0 ? newPlayerGroupIds : [selectedGroupId];
-      addPlayer(newName.trim(), newGender, groupIds);
+      const parsedElo = parseInt(newElo, 10);
+      const initialRating = !isNaN(parsedElo) ? parsedElo : 1500;
+      addPlayer(newName.trim(), newGender, groupIds, initialRating);
       setNewName('');
       setNewGender('male');
+      setNewElo('1500');
       setNewPlayerGroupIds([selectedGroupId]);
-      showNotification('success', `Đã thêm thành viên mới: ${newName.trim()} (${newGender === 'male' ? 'Nam' : 'Nữ'})`);
+      showNotification(
+        'success',
+        `Đã thêm thành viên mới: ${newName.trim()} (${newGender === 'male' ? 'Nam' : 'Nữ'}, Elo: ${initialRating})`
+      );
     }
+  };
+
+  const handleUpdatePlayerElo = (playerId: string, targetElo: number) => {
+    if (isNaN(targetElo) || targetElo < 100 || targetElo > 5000) {
+      showNotification('error', 'Điểm Elo không hợp lệ (khoảng 100 - 5000).');
+      return;
+    }
+    const player = players.find(p => p.id === playerId);
+    if (!player) return;
+    const currentElo = playerEloMap[playerId] ?? (player.initialRating ?? 1500);
+    const currentInitial = player.initialRating ?? 1500;
+    const matchDelta = currentElo - currentInitial;
+    const newInitial = targetElo - matchDelta;
+    updatePlayer(playerId, { initialRating: newInitial });
+    showNotification('success', `Đã cập nhật điểm Elo của ${player.name} thành ${targetElo}`);
   };
 
   const handleAddGroup = (e: React.FormEvent) => {
@@ -154,6 +187,7 @@ export default function PlayerManagement() {
       notification, isLight, config, setConfig, runAdminAction, activeGroups, groups,
       selectedGroupId, newGroupName, setNewGroupName, handleAddGroup,
       updateGroup, archiveGroup, deleteGroup, newName, setNewName, newGender, setNewGender,
+      newElo, setNewElo, playerEloMap, handleUpdatePlayerElo,
       newPlayerGroupIds, toggleNewPlayerGroup, handleAdd, players, updatePlayer, deletePlayer,
       togglePlayerGroup, deletingGroup, setDeletingGroup, handleDeleteGroupClick,
       confirmDeleteGroup: handleConfirmDeleteGroup, deletingGroupStats,

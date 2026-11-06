@@ -1,6 +1,6 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, CheckCircle2, Layers3, Mars, Minus, Plus, Trash2, UserPlus, Venus } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Layers3, Mars, Minus, Plus, SlidersHorizontal, Trash2, UserPlus, Venus } from 'lucide-react';
 import { LeaderboardConfig, Player, PlayerGroup } from '../../types';
 import { DEFAULT_GROUP_ID } from '../../constants/groups';
 import { Button } from '../ui/button';
@@ -29,6 +29,10 @@ export interface PlayerManagementViewModel {
   setNewName: React.Dispatch<React.SetStateAction<string>>;
   newGender: 'male' | 'female';
   setNewGender: React.Dispatch<React.SetStateAction<'male' | 'female'>>;
+  newElo: string;
+  setNewElo: React.Dispatch<React.SetStateAction<string>>;
+  playerEloMap: Record<string, number>;
+  handleUpdatePlayerElo: (playerId: string, targetElo: number) => void;
   newPlayerGroupIds: string[];
   toggleNewPlayerGroup: (groupId: string) => void;
   handleAdd: (event: React.FormEvent) => void;
@@ -49,25 +53,44 @@ export interface PlayerManagementViewModel {
 }
 
 function SystemSettingsCard({ model }: { model: PlayerManagementViewModel }) {
-  const { config, setConfig, runAdminAction } = model;
+  const { config, setConfig, runAdminAction, isLight } = model;
   return (
-    <Card>
-      <CardHeader className="text-center sm:text-left">
-        <CardTitle className="text-sm xs:text-base sm:text-lg font-bold text-white whitespace-nowrap">CÀI ĐẶT HỆ THỐNG</CardTitle>
-        <CardDescription>Cấu hình chung</CardDescription>
+    <Card className={isLight ? 'bg-white border-slate-200/90 shadow-sm' : 'bg-slate-900 border-white/10'}>
+      <CardHeader className="text-left pb-3">
+        <div className="flex items-center gap-2">
+          <SlidersHorizontal className={`w-4 h-4 ${isLight ? 'text-teal-600' : 'text-teal-400'}`} />
+          <CardTitle className={`text-sm xs:text-base sm:text-lg font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            CÀI ĐẶT HỆ THỐNG
+          </CardTitle>
+        </div>
+        <CardDescription className={isLight ? 'text-slate-500' : 'text-slate-400'}>
+          Cấu hình quy tắc xếp hạng chung
+        </CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 bg-white/5 border border-white/5 rounded-xl text-center sm:text-left">
-          <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-200 block">Số trận tối thiểu để vào Bảng Xếp Hạng Chính:</label>
-            <p className="text-xs text-slate-400">Yêu cầu tối thiểu để người chơi hiển thị trên bảng chính</p>
+      <CardContent className="pt-0">
+        <div className={`flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border ${
+          isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-white/5 border-white/5'
+        }`}>
+          <div className="space-y-0.5 min-w-0 pr-2">
+            <label className={`text-xs sm:text-sm font-semibold block ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
+              Số trận tối thiểu để vào BXH chính
+            </label>
+            <p className={`text-[11px] sm:text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+              Yêu cầu tối thiểu để người chơi hiển thị trên bảng chính
+            </p>
           </div>
-          <div className="flex justify-center w-full sm:w-auto">
-            <div className="flex items-center justify-between bg-slate-950 border border-white/10 rounded-xl p-1 w-32 h-9">
+          <div className="flex-shrink-0">
+            <div className={`flex items-center justify-between rounded-xl p-1 w-28 sm:w-32 h-9 border ${
+              isLight ? 'bg-white border-slate-300 shadow-xs' : 'bg-slate-950 border-white/10'
+            }`}>
               <button
                 type="button"
                 onClick={() => runAdminAction(() => setConfig({ minMatchesForMainBoard: Math.max(1, config.minMatchesForMainBoard - 1) }))}
-                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/5 active:bg-white/10 transition-colors text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed cursor-pointer"
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                  isLight
+                    ? 'hover:bg-slate-100 active:bg-slate-200 text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed'
+                    : 'hover:bg-white/5 active:bg-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed'
+                }`}
                 disabled={config.minMatchesForMainBoard <= 1}
               >
                 <Minus className="w-3.5 h-3.5" />
@@ -75,7 +98,9 @@ function SystemSettingsCard({ model }: { model: PlayerManagementViewModel }) {
               
               <input
                 type="number"
-                className="w-12 text-center font-bold bg-transparent border-0 text-white focus:outline-none focus:ring-0 text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                className={`w-10 sm:w-12 text-center font-bold bg-transparent border-0 focus:outline-none focus:ring-0 text-xs sm:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                  isLight ? 'text-slate-900' : 'text-white'
+                }`}
                 min="1"
                 value={config.minMatchesForMainBoard}
                 onChange={e => runAdminAction(() => setConfig({ minMatchesForMainBoard: Math.max(1, parseInt(e.target.value) || 1) }))}
@@ -84,7 +109,11 @@ function SystemSettingsCard({ model }: { model: PlayerManagementViewModel }) {
               <button
                 type="button"
                 onClick={() => runAdminAction(() => setConfig({ minMatchesForMainBoard: config.minMatchesForMainBoard + 1 }))}
-                className="w-7 h-7 rounded-lg flex items-center justify-center hover:bg-white/5 active:bg-white/10 transition-colors text-slate-400 hover:text-white cursor-pointer"
+                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                  isLight
+                    ? 'hover:bg-slate-100 active:bg-slate-200 text-slate-600 hover:text-slate-900'
+                    : 'hover:bg-white/5 active:bg-white/10 text-slate-400 hover:text-white'
+                }`}
               >
                 <Plus className="w-3.5 h-3.5" />
               </button>
@@ -212,7 +241,7 @@ function GroupManager({ model }: { model: PlayerManagementViewModel }) {
 function AddPlayerForm({ model }: { model: PlayerManagementViewModel }) {
   const {
     isLight, activeGroups, newName, setNewName, newGender, setNewGender,
-    newPlayerGroupIds, toggleNewPlayerGroup, handleAdd,
+    newElo, setNewElo, newPlayerGroupIds, toggleNewPlayerGroup, handleAdd,
   } = model;
 
   // Compute CSS classes locally based on isLight
@@ -240,7 +269,7 @@ function AddPlayerForm({ model }: { model: PlayerManagementViewModel }) {
         <span>Thêm người chơi</span>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_132px_112px] gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_130px_100px] gap-3 items-center">
         <Input
           placeholder="Tên người chơi mới..."
           value={newName}
@@ -259,6 +288,54 @@ function AddPlayerForm({ model }: { model: PlayerManagementViewModel }) {
           <Plus className="w-4 h-4 mr-1.5" />
           Thêm
         </Button>
+      </div>
+
+      {/* Thanh trượt ngang điều chỉnh Elo khởi điểm */}
+      <div className={`p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+        isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-white/5 border-white/5'
+      }`}>
+        <div className="flex items-center gap-2 shrink-0">
+          <span className={`text-xs font-bold uppercase tracking-wider ${isLight ? 'text-slate-600' : 'text-slate-300'}`}>
+            Elo khởi điểm:
+          </span>
+          <span className="font-mono font-black text-sm px-2.5 py-0.5 rounded-lg bg-teal-500/15 text-teal-700 dark:text-teal-300 border border-teal-500/30 tabular-nums">
+            {newElo}
+          </span>
+        </div>
+
+        <div className="flex-1 flex items-center gap-2.5 max-w-lg">
+          <span className="text-[10px] font-bold text-slate-400 shrink-0">800</span>
+          <input
+            type="range"
+            min={800}
+            max={2500}
+            step={10}
+            value={newElo}
+            onChange={e => setNewElo(e.target.value)}
+            className="w-full accent-teal-500 h-2 bg-slate-200 dark:bg-white/15 rounded-lg cursor-pointer"
+          />
+          <span className="text-[10px] font-bold text-slate-400 shrink-0">2500</span>
+        </div>
+
+        {/* Mốc Elo chọn nhanh */}
+        <div className="flex items-center gap-1.5 shrink-0">
+          {[1300, 1500, 1700, 1900].map(val => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => setNewElo(val.toString())}
+              className={`text-[10px] px-2 py-1 rounded-md font-bold transition-all cursor-pointer border ${
+                parseInt(newElo, 10) === val
+                  ? 'bg-teal-500 text-white border-teal-500 shadow-xs'
+                  : isLight
+                  ? 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700'
+                  : 'bg-white/5 border-white/10 text-slate-400 hover:text-white'
+              }`}
+            >
+              {val}
+            </button>
+          ))}
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-[120px_1fr] gap-2 sm:items-start">
@@ -287,6 +364,103 @@ function AddPlayerForm({ model }: { model: PlayerManagementViewModel }) {
   );
 }
 
+function PlayerEloSliderCell({
+  player,
+  currentElo,
+  onUpdateElo,
+  isLight,
+}: {
+  player: Player;
+  currentElo: number;
+  onUpdateElo: (playerId: string, val: number) => void;
+  isLight: boolean;
+}) {
+  const [val, setVal] = React.useState(currentElo);
+
+  React.useEffect(() => {
+    setVal(currentElo);
+  }, [currentElo]);
+
+  const commitValue = (newVal: number) => {
+    const clamped = Math.max(800, Math.min(2500, newVal));
+    if (clamped !== currentElo) {
+      onUpdateElo(player.id, clamped);
+    }
+  };
+
+  return (
+    <div className="flex items-center justify-center gap-1.5 min-w-[210px] max-w-[250px] mx-auto py-1">
+      {/* Nút giảm 10 */}
+      <button
+        type="button"
+        onClick={() => {
+          const next = Math.max(800, val - 10);
+          setVal(next);
+          commitValue(next);
+        }}
+        className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black border transition-all cursor-pointer active:scale-95 shrink-0 ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700 hover:bg-teal-50/50 shadow-xs'
+            : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-teal-300'
+        }`}
+        title="Giảm 10 Elo"
+      >
+        -
+      </button>
+
+      {/* Thanh trượt ngang */}
+      <div className="flex-1 flex flex-col items-center gap-0.5">
+        <input
+          type="range"
+          min={800}
+          max={2500}
+          step={10}
+          value={val}
+          onChange={e => setVal(parseInt(e.target.value, 10))}
+          onMouseUp={e => commitValue(parseInt((e.target as HTMLInputElement).value, 10))}
+          onTouchEnd={e => commitValue(parseInt((e.target as HTMLInputElement).value, 10))}
+          onKeyUp={e => {
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+              commitValue(parseInt((e.target as HTMLInputElement).value, 10));
+            }
+          }}
+          className="w-full h-1.5 bg-slate-200 dark:bg-white/15 rounded-lg appearance-none cursor-pointer accent-teal-500"
+          title={`Kéo thanh trượt để chỉnh Elo: ${val}`}
+        />
+      </div>
+
+      {/* Nút tăng 10 */}
+      <button
+        type="button"
+        onClick={() => {
+          const next = Math.min(2500, val + 10);
+          setVal(next);
+          commitValue(next);
+        }}
+        className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black border transition-all cursor-pointer active:scale-95 shrink-0 ${
+          isLight
+            ? 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700 hover:bg-teal-50/50 shadow-xs'
+            : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-teal-300'
+        }`}
+        title="Tăng 10 Elo"
+      >
+        +
+      </button>
+
+      {/* Điểm số Elo hiển thị */}
+      <span
+        className={`w-13 text-center font-mono font-black text-xs px-1.5 py-0.5 rounded-md border tabular-nums shrink-0 ${
+          isLight
+            ? 'bg-teal-50 border-teal-200 text-teal-800 shadow-2xs'
+            : 'bg-teal-500/10 border-teal-500/25 text-teal-300'
+        }`}
+      >
+        {val}
+      </span>
+    </div>
+  );
+}
+
 function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
   const { runAdminAction, activeGroups, players, updatePlayer, togglePlayerGroup, handleDeletePlayerClick, isLight } = model;
   return (
@@ -295,6 +469,7 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
         <TableRow>
           <TableHead className="min-w-[150px] whitespace-nowrap">Tên</TableHead>
           <TableHead className="w-24 text-center whitespace-nowrap">Giới tính</TableHead>
+          <TableHead className="min-w-[220px] text-center whitespace-nowrap">Elo (Thanh trượt)</TableHead>
           <TableHead className="min-w-[180px] whitespace-nowrap">Nhóm</TableHead>
           <TableHead className="w-28 text-center whitespace-nowrap hidden sm:table-cell">Trạng Thái</TableHead>
           <TableHead className="w-28 text-center whitespace-nowrap">Hành động</TableHead>
@@ -307,7 +482,9 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
               <Input 
                 value={p.name} 
                 onChange={e => runAdminAction(() => updatePlayer(p.id, { name: e.target.value }))}
-                className="border-transparent hover:border-white/10 focus:border-white/20 h-8 bg-transparent px-2 text-slate-100"
+                className={`border-transparent hover:border-slate-300 dark:hover:border-white/10 focus:border-teal-500 h-8 bg-transparent px-2 ${
+                  isLight ? 'text-slate-900' : 'text-slate-100'
+                }`}
               />
             </TableCell>
             <TableCell className="text-center whitespace-nowrap">
@@ -332,6 +509,14 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
                   </>
                 )}
               </button>
+            </TableCell>
+            <TableCell className="text-center whitespace-nowrap">
+              <PlayerEloSliderCell
+                player={p}
+                currentElo={model.playerEloMap[p.id] ?? (p.initialRating ?? 1500)}
+                onUpdateElo={(playerId, val) => runAdminAction(() => model.handleUpdatePlayerElo(playerId, val))}
+                isLight={isLight}
+              />
             </TableCell>
             <TableCell>
               <div className="flex flex-wrap gap-1.5 min-w-[180px]">

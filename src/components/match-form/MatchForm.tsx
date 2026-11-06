@@ -130,7 +130,7 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
         <button
           type="button"
           onClick={() => setActiveMode('matchmaker')}
-          className={`flex-1 py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             activeMode === 'matchmaker'
               ? isLight
                 ? 'bg-white text-teal-900 shadow-sm border border-slate-200/80'
@@ -140,14 +140,14 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
               : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
           }`}
         >
-          <Zap className={`w-4 h-4 ${activeMode === 'matchmaker' ? 'text-teal-600' : 'text-slate-400'}`} />
-          <span>Tự Động Xếp Đội (2 vs 2)</span>
+          <Zap className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 ${activeMode === 'matchmaker' ? 'text-teal-600' : 'text-slate-400'}`} />
+          <span>Tự Động Xếp Đội <span className="hidden sm:inline">(2 vs 2)</span></span>
         </button>
 
         <button
           type="button"
           onClick={() => setActiveMode('score')}
-          className={`flex-1 py-2.5 px-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-2 cursor-pointer ${
+          className={`flex-1 py-2 sm:py-2.5 px-2 sm:px-3 text-xs sm:text-sm font-bold rounded-xl transition-all duration-200 flex items-center justify-center gap-1.5 sm:gap-2 cursor-pointer ${
             activeMode === 'score'
               ? isLight
                 ? 'bg-white text-teal-900 shadow-sm border border-slate-200/80'
@@ -157,7 +157,7 @@ export default function MatchForm({ onSaved, initialData }: MatchFormProps) {
               : 'text-slate-400 hover:text-white hover:bg-white/5 border border-transparent'
           }`}
         >
-          <PlusCircle className={`w-4 h-4 ${activeMode === 'score' ? 'text-teal-600' : 'text-slate-400'}`} />
+          <PlusCircle className={`w-3.5 h-3.5 sm:w-4 sm:h-4 flex-shrink-0 ${activeMode === 'score' ? 'text-teal-600' : 'text-slate-400'}`} />
           <span>Ghi Nhận Điểm Số</span>
         </button>
       </div>

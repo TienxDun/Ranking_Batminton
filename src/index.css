@@ -763,7 +763,11 @@ input[type="datetime-local"]::-webkit-calendar-picker-indicator {
 .light .bg-teal-500,
 .light .bg-teal-600,
 .light .bg-emerald-500,
-.light .bg-rose-600 {
+.light .bg-rose-600,
+.light .bg-teal-700,
+.light button.bg-teal-700,
+.light button[class*="from-teal-"],
+.light button[class*="from-emerald-"] {
   color: #ffffff !important;
 }
 

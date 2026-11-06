@@ -14,7 +14,7 @@ export function calculateLeaderboard(players: Player[], matches: Match[]): Playe
       winRate: 0,
       avgPointDiff: 0,
       exactMatchesCount: 0,
-      rating: 1500, // Initial Elo rating
+      rating: p.initialRating ?? 1500, // Initial Elo rating
     };
   });
 
@@ -56,7 +56,7 @@ export function calculateLeaderboard(players: Player[], matches: Match[]): Playe
   // Calculate dynamic Elo ratings chronologically
   const ratings: Record<string, number> = {};
   players.forEach(p => {
-    ratings[p.id] = 1500;
+    ratings[p.id] = p.initialRating ?? 1500;
   });
 
   // matches list is sorted newest first, so we reverse it to process from oldest to newest
@@ -165,7 +165,7 @@ export function calculateEloHistory(players: Player[], matches: Match[]): EloHis
   // Khởi tạo điểm Elo ban đầu
   const currentRatings: Record<string, number> = {};
   players.forEach(p => {
-    currentRatings[p.id] = 1500;
+    currentRatings[p.id] = p.initialRating ?? 1500;
   });
 
   // Điểm bắt đầu
@@ -174,7 +174,7 @@ export function calculateEloHistory(players: Player[], matches: Match[]): EloHis
     date: '',
   };
   players.forEach(p => {
-    startPoint[p.name] = 1500;
+    startPoint[p.name] = p.initialRating ?? 1500;
   });
   history.push(startPoint);
 
@@ -227,7 +227,7 @@ export function calculatePlayerEloBreakdown(
 ): PlayerEloMatchBreakdown[] {
   const ratings: Record<string, number> = {};
   players.forEach(p => {
-    ratings[p.id] = 1500;
+    ratings[p.id] = p.initialRating ?? 1500;
   });
 
   const breakdown: PlayerEloMatchBreakdown[] = [];
@@ -245,7 +245,7 @@ export function calculatePlayerEloBreakdown(
 
     const isTeam1Player = match.team1.includes(playerId);
     const isTeam2Player = match.team2.includes(playerId);
-    const ratingBefore = ratings[playerId] ?? 1500;
+    const ratingBefore = ratings[playerId] ?? (players.find(p => p.id === playerId)?.initialRating ?? 1500);
 
     match.team1.forEach(id => {
       ratings[id] += team1Change;

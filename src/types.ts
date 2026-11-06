@@ -4,6 +4,7 @@ export type Player = {
   isActive: boolean;
   gender: 'male' | 'female';
   groupIds: string[];
+  initialRating?: number;
 };
 
 export type PlayerGroup = {

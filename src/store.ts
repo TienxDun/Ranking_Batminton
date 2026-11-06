@@ -61,6 +61,7 @@ function normalizePlayers(players: Player[] = [], groups: PlayerGroup[] = []): P
     groupIds: Array.isArray(player.groupIds) && player.groupIds.length > 0
       ? player.groupIds
       : [fallbackGroupId],
+    initialRating: typeof player.initialRating === 'number' ? player.initialRating : 1500,
   }));
 }
 
@@ -106,10 +107,10 @@ interface AppState {
   updateGroup: (id: string, updates: Partial<Omit<PlayerGroup, 'id'>>) => void;
   archiveGroup: (id: string) => void;
   deleteGroup: (id: string) => void;
-  addPlayer: (name: string, gender?: 'male' | 'female', groupIds?: string[]) => void;
+  addPlayer: (name: string, gender?: 'male' | 'female', groupIds?: string[], initialRating?: number) => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
   deletePlayer: (id: string) => void;
-  addMatch: (match: Omit<Match, 'id'>) => void;
+  addMatch: (match: Omit<Match, 'id'> & { id?: string }) => void;
   updateMatch: (id: string, updates: Partial<Match>) => void;
   deleteMatch: (id: string) => void;
   clearMatches: () => void;
@@ -314,7 +315,7 @@ export const useStore = create<AppState>()(
           });
         },
 
-        addPlayer: (name, gender = 'male', groupIds) => {
+        addPlayer: (name, gender = 'male', groupIds, initialRating = 1500) => {
           const selectedGroupId = get().selectedGroupId || DEFAULT_GROUP_ID;
           const newPlayers = [
             ...get().players,
@@ -324,6 +325,7 @@ export const useStore = create<AppState>()(
               isActive: true,
               gender,
               groupIds: groupIds && groupIds.length > 0 ? groupIds : [selectedGroupId],
+              initialRating: typeof initialRating === 'number' && !isNaN(initialRating) ? initialRating : 1500,
             },
           ];
           set({ players: newPlayers });
@@ -361,7 +363,7 @@ export const useStore = create<AppState>()(
         },
         
         addMatch: (match) => {
-          const newMatches = [{ ...match, id: uuidv4(), groupId: match.groupId || get().selectedGroupId }, ...get().matches];
+          const newMatches = [{ ...match, id: match.id || uuidv4(), groupId: match.groupId || get().selectedGroupId }, ...get().matches];
           set({ matches: newMatches });
           sync({ matches: newMatches });
         },

@@ -1,8 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import {
   Sparkles,
   Users,
   RotateCcw,
+  RotateCw,
   ArrowRightLeft,
   Search,
   CheckCircle2,
@@ -19,6 +21,7 @@ import {
   Edit3,
   ArrowRight,
   SlidersHorizontal,
+  Trophy,
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../ui/card';
 import { Button } from '../ui/button';
@@ -50,8 +53,11 @@ interface MatchmakerViewProps {
   onConfirmNextRound: () => void;
   onResetSession: () => void;
   onSwapClick: (target: SelectedSwapTarget) => void;
+  onSwapPlayers?: (source: SelectedSwapTarget, target: SelectedSwapTarget) => void;
   onPlayMatch: (court: CourtMatch) => void;
   onQuickSaveScore: (court: CourtMatch, score1: number, score2: number) => void;
+  onClearCourtScore: (court: CourtMatch) => void;
+  onRotateCourt: (court: CourtMatch) => void;
 }
 
 export default function MatchmakerView({
@@ -73,13 +79,39 @@ export default function MatchmakerView({
   onConfirmNextRound,
   onResetSession,
   onSwapClick,
+  onSwapPlayers,
   onPlayMatch,
   onQuickSaveScore,
+  onClearCourtScore,
+  onRotateCourt,
 }: MatchmakerViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [isCheckInModalOpen, setIsCheckInModalOpen] = useState(false);
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
   const [quickScoreCourt, setQuickScoreCourt] = useState<CourtMatch | null>(null);
+  const [swapCandidate, setSwapCandidate] = useState<{
+    player: MatchmakerPlayer;
+    source: SelectedSwapTarget;
+    label: string;
+  } | null>(null);
+
+  // Lock body scroll whenever any modal / popup is open
+  useEffect(() => {
+    const isAnyModalOpen = Boolean(
+      isCheckInModalOpen || swapCandidate || quickScoreCourt || isResetConfirmOpen
+    );
+    if (!isAnyModalOpen) return;
+
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, [isCheckInModalOpen, swapCandidate, quickScoreCourt, isResetConfirmOpen]);
 
   const filteredPlayers = allPlayers.filter(p =>
     p.name.toLowerCase().includes(searchQuery.toLowerCase().trim())
@@ -89,30 +121,37 @@ export default function MatchmakerView({
   const isEnoughPlayers = checkedInIds.length >= neededPlayers;
   const maxCourtsPossible = Math.max(1, Math.floor(checkedInIds.length / 4));
 
-  const getSwapSelectedPlayer = () => {
-    if (!swapTarget || !currentMatchup) return null;
-    if (swapTarget.type === 'court') {
-      const court = currentMatchup.courts[swapTarget.courtIdx];
-      if (!court) return null;
-      return [...court.team1, ...court.team2].find(p => p.id === swapTarget.playerId) || null;
-    }
-    return currentMatchup.benchPlayers.find(p => p.id === swapTarget.playerId) || null;
-  };
-
-  const activeSwapPlayer = getSwapSelectedPlayer();
-
   // Đếm số sân đã ghi điểm trong lượt
   const totalCourtsInRound = currentMatchup?.courts.length || 0;
   const recordedCount = Object.keys(recordedScores).length;
   const isAllCourtsRecorded = totalCourtsInRound > 0 && recordedCount >= totalCourtsInRound;
 
+  const handleOpenSwapModal = (
+    player: MatchmakerPlayer,
+    source: SelectedSwapTarget,
+    label: string
+  ) => {
+    setSwapCandidate({ player, source, label });
+  };
+
+  const handleConfirmSwap = (target: SelectedSwapTarget) => {
+    if (!swapCandidate) return;
+    if (onSwapPlayers) {
+      onSwapPlayers(swapCandidate.source, target);
+    } else {
+      onSwapClick(swapCandidate.source);
+      onSwapClick(target);
+    }
+    setSwapCandidate(null);
+  };
+
   return (
-    <div className="space-y-5 pb-12 relative">
-      {/* Floating Toast Notification (Zero Layout Shift - Không bao giờ đẩy giật giao diện) */}
-      {notification && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-[92vw] sm:max-w-md pointer-events-none animate-in fade-in slide-in-from-top-4 duration-300">
+    <div className="space-y-5 pb-6 relative">
+      {/* Floating Toast Notification (Zero Layout Shift - Positioned at bottom to avoid covering top tabs) */}
+      {notification && typeof document !== 'undefined' && createPortal(
+        <div className="fixed bottom-20 md:bottom-8 left-1/2 -translate-x-1/2 z-[100] w-max max-w-[92vw] pointer-events-none animate-in fade-in slide-in-from-bottom-4 duration-300">
           <div
-            className={`px-4 py-2.5 rounded-full border flex items-center gap-2.5 shadow-2xl backdrop-blur-md pointer-events-auto ${
+            className={`px-5 py-2.5 rounded-full border flex items-center justify-center gap-2.5 shadow-2xl backdrop-blur-md pointer-events-auto min-w-[280px] sm:min-w-[360px] ${
               notification.type === 'success'
                 ? isLight
                   ? 'bg-emerald-600 border-emerald-500 text-white-force shadow-emerald-950/20'
@@ -127,11 +166,12 @@ export default function MatchmakerView({
             ) : (
               <AlertCircle className="w-4 h-4 flex-shrink-0 text-white-force" />
             )}
-            <span className="text-xs sm:text-sm font-bold text-white-force leading-tight">
+            <span className="text-xs sm:text-sm font-bold text-white-force whitespace-nowrap leading-none">
               {notification.text}
             </span>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
       {/* Control Hub Card */}
@@ -142,24 +182,16 @@ export default function MatchmakerView({
             : 'border-teal-500/20 bg-gradient-to-br from-slate-950/90 via-slate-900/80 to-teal-950/20 shadow-black/40'
         }`}
       >
-        <CardHeader className="pb-3 pt-4 sm:pt-5 px-4 sm:px-6">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <span className="p-2 rounded-xl bg-gradient-to-br from-teal-500/20 to-indigo-500/15 border border-teal-500/30 text-teal-500 shadow-sm">
-                <Zap className="w-5 h-5" />
-              </span>
-              <div>
-                <CardTitle className={`text-base sm:text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                  XẾP ĐỘI HÌNH THI ĐẤU
-                </CardTitle>
-                <CardDescription className={`text-xs ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
-                  Cân bằng Elo & công bằng số trận cho toàn bộ thành viên
-                </CardDescription>
-              </div>
+        <CardHeader className="pb-3 pt-4 sm:pt-5 px-3.5 sm:px-6">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            <div className="min-w-0 flex-1">
+              <CardTitle className={`text-sm sm:text-base md:text-lg font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                XẾP ĐỘI HÌNH THI ĐẤU
+              </CardTitle>
             </div>
 
             {/* Current Round Badge & Reset Action */}
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
               <div
                 className={`px-3 py-1 rounded-full text-xs font-bold border flex items-center gap-1.5 shadow-sm ${
                   isLight
@@ -305,79 +337,115 @@ export default function MatchmakerView({
         </CardContent>
       </Card>
 
-      {/* Swap Mode Guidance Banner */}
-      {activeSwapPlayer && (
-        <div
-          className={`sticky top-20 z-30 p-3.5 sm:p-4 rounded-2xl border flex items-center justify-between gap-3 shadow-xl backdrop-blur-md animate-in fade-in slide-in-from-top-2 duration-200 ${
+      {/* Empty State / Ready to Generate Placeholder */}
+      {(!currentMatchup || currentMatchup.courts.length === 0) && (
+        <Card
+          className={`p-5 sm:p-7 rounded-3xl border text-center space-y-4 backdrop-blur-sm transition-all animate-in fade-in duration-300 ${
             isLight
-              ? 'border-amber-400 bg-amber-50/95 text-amber-950 ring-2 ring-amber-400/30'
-              : 'border-amber-500/50 bg-slate-950/90 text-amber-200 ring-2 ring-amber-500/30'
+              ? 'bg-white/80 border-slate-200/90 shadow-sm'
+              : 'bg-slate-900/40 border-white/10'
           }`}
         >
-          <div className="flex items-center gap-2.5 text-xs sm:text-sm min-w-0">
-            <ArrowRightLeft className="w-4 h-4 animate-spin text-amber-500 flex-shrink-0" />
-            <div className="truncate">
-              Đang chọn: <strong className="font-black text-amber-600 dark:text-amber-400 underline">{activeSwapPlayer.name}</strong>. Bấm vào cầu thủ khác trên sân hoặc băng ghế chờ để hoán đổi!
-            </div>
+          <div className="w-12 h-12 sm:w-14 sm:h-14 mx-auto rounded-2xl bg-teal-500/10 border border-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400 shadow-xs">
+            <Sparkles className="w-6 h-6 sm:w-7 sm:h-7" />
           </div>
-          <Button
-            size="sm"
-            variant="ghost"
-            onClick={() => onSwapClick({ type: 'bench', playerId: activeSwapPlayer.id })}
-            className={`h-8 px-3 text-xs font-bold cursor-pointer rounded-xl flex-shrink-0 ${
-              isLight
-                ? 'bg-amber-200/80 hover:bg-amber-300 text-amber-900 border border-amber-300'
-                : 'bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40'
-            }`}
-          >
-            Hủy chọn
-          </Button>
-        </div>
+
+          <div className="max-w-md mx-auto space-y-1">
+            <h3 className={`text-base font-black tracking-tight ${isLight ? 'text-slate-900' : 'text-white'}`}>
+              Sẵn sàng xếp đội hình lượt #{roundNumber}
+            </h3>
+            <p className={`text-xs sm:text-sm ${isLight ? 'text-slate-600' : 'text-slate-400'}`}>
+              {checkedInIds.length >= 4 ? (
+                <>
+                  Đã có <strong className="text-teal-600 dark:text-teal-400 font-bold">{checkedInIds.length}</strong> thành viên điểm danh (Đủ cho {maxCourtsPossible} sân). Bấm nút <strong className={isLight ? 'text-slate-900' : 'text-white'}>"Xếp Sân Tự Động"</strong> ở trên để tạo các cặp đấu cân kèo!
+                </>
+              ) : (
+                <>
+                  Hiện có <strong className="text-amber-600 dark:text-amber-400 font-bold">{checkedInIds.length}</strong> người điểm danh. Cần ít nhất 4 người để bắt đầu xếp sân thi đấu.
+                </>
+              )}
+            </p>
+          </div>
+
+          {/* Quick list of checked-in players */}
+          {checkedInIds.length > 0 && (
+            <div className="pt-3 border-t border-slate-200/70 dark:border-white/5 space-y-2">
+              <span className={`text-[11px] font-bold uppercase tracking-wider block ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                Thành viên có mặt hôm nay ({checkedInIds.length})
+              </span>
+              <div className="flex flex-wrap justify-center gap-1.5 max-h-44 overflow-y-auto p-1 scroll-hide">
+                {allPlayers
+                  .filter(p => checkedInIds.includes(p.id))
+                  .map(p => (
+                    <span
+                      key={p.id}
+                      className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-xl text-xs font-semibold border ${
+                        isLight
+                          ? 'bg-slate-50 border-slate-200 text-slate-800 shadow-2xs'
+                          : 'bg-white/5 border-white/10 text-slate-300'
+                      }`}
+                    >
+                      <span>{p.name}</span>
+                      {p.gender === 'female' ? (
+                        <Venus className="w-3 h-3 text-pink-500" />
+                      ) : (
+                        <Mars className="w-3 h-3 text-sky-500" />
+                      )}
+                      <span className={`text-[10px] ml-0.5 font-bold ${isLight ? 'text-teal-700' : 'text-teal-400'}`}>
+                        {p.elo}
+                      </span>
+                    </span>
+                  ))}
+              </div>
+            </div>
+          )}
+        </Card>
       )}
 
       {/* Courts Display Section */}
       {currentMatchup && currentMatchup.courts.length > 0 && (
         <div className="space-y-4">
           {/* Section Header with Next Round Action */}
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 px-1">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className={`text-sm sm:text-base font-black uppercase tracking-wider flex items-center gap-2 ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                <span>🏸 Đội hình thi đấu lượt #{roundNumber}</span>
+          <div className="flex items-center justify-between gap-2.5 px-1">
+            <div className="flex items-center gap-2 flex-wrap min-w-0">
+              <h2 className={`text-sm sm:text-base font-black uppercase tracking-wider flex items-center gap-1.5 shrink-0 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                <span className="hidden sm:inline">🏸 Đội hình thi đấu lượt #{roundNumber}</span>
+                <span className="sm:hidden">🏸 Lượt #{roundNumber}</span>
               </h2>
-              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border ${
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border shrink-0 ${
                 isLight ? 'bg-slate-100 border-slate-200 text-slate-700' : 'bg-white/5 border-white/10 text-slate-300'
               }`}>
                 {currentMatchup.courts.length} sân
               </span>
-              {recordedCount > 0 && (
-                <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border flex items-center gap-1 ${
-                  isAllCourtsRecorded
-                    ? 'bg-emerald-500/15 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-teal-500/15 border-teal-500/30 text-teal-600 dark:text-teal-400'
-                }`}>
-                  <Check className="w-3 h-3 stroke-[3]" />
-                  Đã ghi {recordedCount}/{totalCourtsInRound} sân
-                </span>
-              )}
+              <span className={`text-xs px-2.5 py-0.5 rounded-full font-bold border flex items-center gap-1 shrink-0 ${
+                isLight ? 'bg-teal-50 border-teal-200 text-teal-800' : 'bg-teal-500/15 border-teal-500/30 text-teal-300'
+              }`}>
+                <RotateCw className="w-3 h-3 text-teal-500" />
+                Cuốn chiếu từng sân
+              </span>
             </div>
 
             <Button
               type="button"
               onClick={onConfirmNextRound}
-              className={`h-10 px-4 rounded-xl text-xs sm:text-sm font-bold shadow-md cursor-pointer active:scale-98 transition-all flex items-center gap-1.5 self-start sm:self-auto ${
+              className={`h-9 sm:h-10 px-3 sm:px-4 rounded-xl text-xs sm:text-sm font-bold shadow-sm cursor-pointer active:scale-98 transition-all flex items-center gap-1.5 shrink-0 ${
                 isAllCourtsRecorded
                   ? 'bg-teal-600 hover:bg-teal-700 text-white-force ring-2 ring-teal-500/30'
                   : isLight
-                  ? 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-300'
+                  ? 'bg-white hover:bg-slate-50 text-slate-800 border border-slate-300 hover:border-slate-400'
                   : 'bg-slate-900 hover:bg-slate-800 text-slate-200 border border-white/15'
               }`}
+              title="Chuyển toàn bộ các sân sang lượt tiếp theo"
             >
-              <span>
+              <span className="hidden sm:inline">
                 {isAllCourtsRecorded
-                  ? `Hoàn tất lượt #${roundNumber} & Sang lượt #${roundNumber + 1}`
+                  ? `Hoàn tất & Sang lượt #${roundNumber + 1}`
                   : `Xác nhận & Sang lượt #${roundNumber + 1}`}
               </span>
-              <ArrowRight className="w-4 h-4 text-current" />
+              <span className="sm:hidden">
+                {`Sang lượt #${roundNumber + 1}`}
+              </span>
+              <ArrowRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-current" />
             </Button>
           </div>
 
@@ -390,10 +458,13 @@ export default function MatchmakerView({
                 sessionStats={sessionStats}
                 isLight={isLight}
                 recordedScore={recordedScores[court.courtIndex]}
-                swapTarget={swapTarget}
-                onSwapClick={onSwapClick}
+                swapCandidatePlayerId={swapCandidate?.player.id}
+                onOpenSwapModal={handleOpenSwapModal}
                 onPlayMatch={onPlayMatch}
                 onOpenQuickScore={() => setQuickScoreCourt(court)}
+                onQuickSaveScore={onQuickSaveScore}
+                onClearCourtScore={onClearCourtScore}
+                onRotateCourt={onRotateCourt}
               />
             ))}
           </div>
@@ -403,8 +474,8 @@ export default function MatchmakerView({
             bench={currentMatchup.benchPlayers}
             sessionStats={sessionStats}
             isLight={isLight}
-            swapTarget={swapTarget}
-            onSwapClick={onSwapClick}
+            swapCandidatePlayerId={swapCandidate?.player.id}
+            onOpenSwapModal={handleOpenSwapModal}
           />
 
           {/* Bottom Next Round Action Button for Easy Navigation */}
@@ -423,6 +494,18 @@ export default function MatchmakerView({
             </Button>
           </div>
         </div>
+      )}
+
+      {/* Swap Player Selection Modal */}
+      {swapCandidate && currentMatchup && (
+        <SwapPlayerModal
+          candidate={swapCandidate}
+          currentMatchup={currentMatchup}
+          sessionStats={sessionStats}
+          isLight={isLight}
+          onClose={() => setSwapCandidate(null)}
+          onConfirmSwap={handleConfirmSwap}
+        />
       )}
 
       {/* Quick Score Modal */}
@@ -444,14 +527,14 @@ export default function MatchmakerView({
         />
       )}
 
-      {/* Reset Session Confirmation Dialog */}
-      {isResetConfirmOpen && (
+      {/* Reset Session Confirmation Dialog (Rendered via createPortal to be dead-center on screen) */}
+      {isResetConfirmOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-sm animate-in fade-in duration-200 overscroll-contain touch-none"
           onClick={() => setIsResetConfirmOpen(false)}
         >
           <div
-            className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 ${
+            className={`w-full max-w-sm rounded-2xl border p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 overscroll-contain touch-auto ${
               isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-white/10 text-white'
             }`}
             onClick={e => e.stopPropagation()}
@@ -489,17 +572,18 @@ export default function MatchmakerView({
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
 
-      {/* Fast Check-In Dialog / Sheet */}
-      {isCheckInModalOpen && (
+      {/* Fast Check-In Dialog / Sheet (Rendered via createPortal to be dead-center on screen) */}
+      {isCheckInModalOpen && typeof document !== 'undefined' && createPortal(
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200"
+          className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200 overscroll-contain touch-none"
           onClick={() => setIsCheckInModalOpen(false)}
         >
           <div
-            className={`w-full max-w-2xl max-h-[85vh] rounded-2xl border flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 ${
+            className={`w-full max-w-2xl max-h-[85vh] rounded-2xl border flex flex-col shadow-2xl overflow-hidden animate-in zoom-in-95 duration-200 overscroll-contain touch-auto ${
               isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-white/10 text-white'
             }`}
             onClick={e => e.stopPropagation()}
@@ -569,7 +653,7 @@ export default function MatchmakerView({
             </div>
 
             {/* Player Grid */}
-            <div className="flex-1 overflow-y-auto p-4 scroll-hide">
+            <div className="flex-1 overflow-y-auto p-4 scroll-hide overscroll-contain touch-pan-y">
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
                 {filteredPlayers.map(player => {
                   const isChecked = checkedInIds.includes(player.id);
@@ -656,7 +740,8 @@ export default function MatchmakerView({
               </Button>
             </div>
           </div>
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
@@ -671,10 +756,13 @@ interface CourtCardProps {
   sessionStats: Record<string, PlayerSessionStats>;
   isLight: boolean;
   recordedScore?: RecordedCourtScore;
-  swapTarget: SelectedSwapTarget | null;
-  onSwapClick: (target: SelectedSwapTarget) => void;
+  swapCandidatePlayerId?: string;
+  onOpenSwapModal: (player: MatchmakerPlayer, source: SelectedSwapTarget, label: string) => void;
   onPlayMatch: (court: CourtMatch) => void;
   onOpenQuickScore: () => void;
+  onQuickSaveScore: (court: CourtMatch, score1: number, score2: number) => void;
+  onClearCourtScore: (court: CourtMatch) => void;
+  onRotateCourt: (court: CourtMatch) => void;
 }
 
 function CourtCard({
@@ -682,19 +770,26 @@ function CourtCard({
   sessionStats,
   isLight,
   recordedScore,
-  swapTarget,
-  onSwapClick,
+  swapCandidatePlayerId,
+  onOpenSwapModal,
   onPlayMatch,
   onOpenQuickScore,
+  onQuickSaveScore,
+  onClearCourtScore,
+  onRotateCourt,
 }: CourtCardProps) {
+  const isTeam1Won = recordedScore ? recordedScore.score1 > recordedScore.score2 : false;
+  const isTeam2Won = recordedScore ? recordedScore.score2 > recordedScore.score1 : false;
+  const hasScore = !!recordedScore;
+
   const qualityBadge = () => {
     if (court.quality === 'perfect') {
       return (
         <span
-          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
             isLight
-              ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
-              : 'bg-emerald-500/15 border-emerald-500/30 text-emerald-400'
+              ? 'bg-emerald-50 text-emerald-800'
+              : 'bg-emerald-500/15 text-emerald-400'
           }`}
         >
           <ShieldCheck className="w-3 h-3" />
@@ -705,10 +800,10 @@ function CourtCard({
     if (court.quality === 'good') {
       return (
         <span
-          className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+          className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold flex items-center gap-1 ${
             isLight
-              ? 'bg-teal-50 border-teal-300 text-teal-800'
-              : 'bg-teal-500/15 border-teal-500/30 text-teal-300'
+              ? 'bg-teal-50 text-teal-800'
+              : 'bg-teal-500/15 text-teal-300'
           }`}
         >
           <Check className="w-3 h-3" />
@@ -718,10 +813,10 @@ function CourtCard({
     }
     return (
       <span
-        className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
           isLight
-            ? 'bg-amber-50 border-amber-300 text-amber-800'
-            : 'bg-amber-500/15 border-amber-500/30 text-amber-400'
+            ? 'bg-amber-50 border-amber-300 text-amber-900'
+            : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
         }`}
       >
         Lệch {court.eloDiff} Elo
@@ -731,162 +826,360 @@ function CourtCard({
 
   return (
     <div
-      className={`rounded-2xl border backdrop-blur-sm p-4 relative overflow-hidden flex flex-col justify-between shadow-xl transition-all ${
+      className={`rounded-2xl border backdrop-blur-sm p-4 relative overflow-hidden flex flex-col justify-between shadow-sm transition-all ${
         recordedScore
           ? isLight
             ? 'bg-emerald-50/40 border-emerald-300/80 text-slate-800'
             : 'bg-emerald-950/20 border-emerald-500/30 text-white'
           : isLight
-          ? 'bg-white border-slate-200/90 text-slate-800 shadow-slate-100'
+          ? 'bg-white border-slate-200/90 text-slate-800'
           : 'bg-slate-900/70 border-white/10 text-white'
       }`}
     >
       {/* Court Header */}
-      <div className={`flex items-center justify-between border-b pb-3 mb-3 ${isLight ? 'border-slate-200/80' : 'border-white/10'}`}>
+      <div className={`flex items-center justify-between border-b pb-3 mb-3 ${isLight ? 'border-slate-100' : 'border-white/5'}`}>
         <div className="flex items-center gap-2">
           <span
-            className={`w-7 h-7 rounded-xl border flex items-center justify-center font-black text-xs ${
+            className={`w-7 h-7 rounded-xl flex items-center justify-center font-black text-xs ${
               isLight
-                ? 'bg-teal-50 border-teal-300 text-teal-800'
-                : 'bg-teal-500/20 border-teal-500/30 text-teal-300'
+                ? 'bg-teal-500/10 text-teal-800'
+                : 'bg-teal-500/20 text-teal-300'
             }`}
           >
             {court.courtIndex + 1}
           </span>
-          <span className={`font-bold text-sm tracking-wide ${isLight ? 'text-slate-900' : 'text-white'}`}>
-            {court.courtName ? court.courtName : `SÂN ${court.courtIndex + 1}`}
+          <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
+            {court.courtName || `Sân ${court.courtIndex + 1}`}
           </span>
-        </div>
-        <div className="flex items-center gap-2">
-          {recordedScore && (
-            <span className="px-2.5 py-0.5 rounded-full text-[11px] font-black bg-emerald-500/20 border border-emerald-500/40 text-emerald-600 dark:text-emerald-400">
-              ✓ Đã xong ({recordedScore.score1} - {recordedScore.score2})
+          {recordedScore ? (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
+              isLight
+                ? 'bg-emerald-50 border-emerald-300 text-emerald-800 shadow-xs'
+                : 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300'
+            }`}>
+              ✓ Đã có điểm ({recordedScore.score1} - {recordedScore.score2})
+            </span>
+          ) : (
+            <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border flex items-center gap-1 ${
+              isLight
+                ? 'bg-slate-100 border-slate-200 text-slate-600'
+                : 'bg-white/5 border-white/10 text-slate-300'
+            }`}>
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+              Đang đấu
             </span>
           )}
+        </div>
+        <div className="flex items-center gap-2">
           {qualityBadge()}
         </div>
       </div>
 
-      {/* Badminton Match Visualizer */}
-      <div className="space-y-2.5">
-        {/* Team 1 Box */}
+      {/* Badminton Match Court Visualizer (Mô phỏng thảm sân cầu lông Yonex chuẩn tỷ lệ dài x rộng dọc) */}
+      <div className="w-full max-w-[310px] sm:max-w-[330px] mx-auto relative rounded-2xl overflow-hidden shadow-lg border-2 border-emerald-950/50 dark:border-emerald-600/60 bg-[#0c7143] select-none my-1 flex flex-col">
+        {/* Nền Thảm Cầu Lông Xanh Chuẩn Thi Đấu */}
+        <div className="absolute inset-0 bg-gradient-to-b from-[#0b643a] via-[#0d7547] to-[#0b643a] pointer-events-none" />
+
+        {/* Header Đội 1 Bar (Tách biệt ở phía trên, không bị vạch sân đè lên) */}
         <div
-          className={`p-3 rounded-xl border space-y-2 ${
-            isLight ? 'bg-slate-50/90 border-slate-200/80' : 'bg-slate-950/40 border-white/5'
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            if (isTeam1Won) {
+              onClearCourtScore(court);
+            } else {
+              onQuickSaveScore(court, 21, 18);
+            }
+          }}
+          className={`relative z-20 px-3 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer border-b ${
+            isTeam1Won
+              ? 'bg-amber-500/20 border-amber-400/40'
+              : 'bg-black/25 hover:bg-black/35 border-white/10'
           }`}
+          title={isTeam1Won ? "Bấm để hủy / đặt lại kết quả" : "Bấm để chọn Đội 1 chiến thắng"}
         >
-          <div className="flex items-center justify-between text-[11px] font-semibold px-1">
-            <span className={isLight ? 'text-slate-600' : 'text-slate-400'}>ĐỘI 1</span>
-            <span className={`font-bold ${isLight ? 'text-teal-700' : 'text-teal-400'}`}>
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded-md font-black text-[10px] tracking-wider uppercase border shadow-xs transition-all ${
+              isTeam1Won
+                ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/20'
+                : 'bg-white/15 text-white border-white/20'
+            }`}>
+              Đội 1
+            </span>
+            {isTeam1Won ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 border border-amber-300 shadow-xs transition-all hover:bg-rose-50 hover:text-rose-600 group/win">
+                <Check className="w-3 h-3 stroke-[3] text-slate-950 group-hover/win:hidden" />
+                <X className="w-3 h-3 stroke-[3] text-rose-500 hidden group-hover/win:inline" />
+                <span>Thắng</span>
+                <span className="text-[9px] text-rose-500 font-normal ml-0.5 hidden group-hover/win:inline">Hủy</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-medium text-white/60 hover:text-white transition-colors">
+                Chọn thắng
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 font-bold">
+            {hasScore && (
+              <span className={`text-xs ${isTeam1Won ? 'text-amber-300 font-black drop-shadow-xs' : 'text-white/60'}`}>
+                {recordedScore.score1} đ
+              </span>
+            )}
+            <span className="text-[11px] text-white/95 font-bold drop-shadow-xs">
               Elo TB: {court.team1Elo}
             </span>
           </div>
-          <div className="grid grid-cols-2 gap-2">
-            {court.team1.map(player => (
-              <PlayerCourtSlot
-                key={player.id}
-                player={player}
-                sessionStats={sessionStats}
-                courtIdx={court.courtIndex}
-                isLight={isLight}
-                isSelectedForSwap={swapTarget?.playerId === player.id}
-                onSwapClick={onSwapClick}
-              />
-            ))}
-          </div>
         </div>
 
-        {/* Center Net Divider with VS Badge */}
-        <div className="relative flex items-center justify-center py-1">
-          <div className="absolute inset-0 flex items-center">
-            <div className={`w-full border-t border-dashed ${isLight ? 'border-slate-300' : 'border-white/15'}`} />
+        {/* Vùng Sân Đấu (Có vạch kẻ Yonex chuẩn và 4 vị trí thi đấu theo tỷ lệ dọc chuẩn) */}
+        <div className="relative p-2 sm:p-2.5">
+          {/* Khung Vạch Kẻ Sân Cầu Lông (Chuẩn BWF theo tỷ lệ dọc 13.4m x 6.1m) */}
+          <div className="absolute inset-2 sm:inset-2.5 border-2 border-white/85 rounded-xs pointer-events-none">
+            {/* Chữ YONEX ở 2 đầu sân */}
+            <div className="absolute top-1 left-0 right-0 text-center text-[7.5px] font-black tracking-[0.3em] text-white/35 uppercase pointer-events-none">
+              YONEX
+            </div>
+            <div className="absolute bottom-1 left-0 right-0 text-center text-[7.5px] font-black tracking-[0.3em] text-white/35 uppercase pointer-events-none">
+              YONEX
+            </div>
+
+            {/* Đường biên đơn (Singles Sidelines): 2 vạch dọc hai bên */}
+            <div className="absolute inset-y-0 left-2.5 sm:left-3 border-r border-white/60 pointer-events-none" />
+            <div className="absolute inset-y-0 right-2.5 sm:right-3 border-l border-white/60 pointer-events-none" />
+
+            {/* Vạch giao cầu dài đánh đôi (Doubles Long Service Line - Top & Bottom ~0.76m) */}
+            <div className="absolute top-7 sm:top-8 left-0 right-0 border-b border-white/60 pointer-events-none" />
+            <div className="absolute bottom-7 sm:bottom-8 left-0 right-0 border-t border-white/60 pointer-events-none" />
+
+            {/* Vạch giao cầu ngắn (Short Service Line - 2 bên lưới ~1.98m) */}
+            <div className="absolute top-[calc(50%-40px)] sm:top-[calc(50%-44px)] left-0 right-0 border-b border-white/70 pointer-events-none" />
+            <div className="absolute bottom-[calc(50%-40px)] sm:bottom-[calc(50%-44px)] left-0 right-0 border-t border-white/70 pointer-events-none" />
+
+            {/* Đường trung tâm (Center Line - Phân chia ô giao cầu trái / phải ở 2 nửa sân) */}
+            <div className="absolute top-7 sm:top-8 bottom-[calc(50%-40px)] sm:bottom-[calc(50%-44px)] left-1/2 -translate-x-1/2 border-l border-white/70 pointer-events-none" />
+            <div className="absolute top-[calc(50%+40px)] sm:top-[calc(50%+44px)] bottom-7 sm:bottom-8 left-1/2 -translate-x-1/2 border-l border-white/70 pointer-events-none" />
           </div>
+
+          {/* Nửa Sân Trên: Đội 1 (Click vào nửa sân để chọn hoặc hủy Đội 1 thắng) */}
           <div
-            className={`relative px-3 py-0.5 rounded-full border text-[10px] font-black flex items-center gap-1.5 shadow-sm ${
-              isLight
-                ? 'bg-white border-slate-300 text-teal-800'
-                : 'bg-slate-900 border-white/15 text-teal-400'
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              if (isTeam1Won) {
+                onClearCourtScore(court);
+              } else {
+                onQuickSaveScore(court, 21, 18);
+              }
+            }}
+            className={`relative z-10 min-h-[190px] sm:min-h-[210px] flex flex-col justify-between pt-7 sm:pt-8 pb-2 px-1 transition-all cursor-pointer rounded-t-lg group ${
+              isTeam1Won
+                ? 'bg-amber-400/15 ring-2 ring-amber-400/70 ring-inset shadow-[inset_0_0_24px_rgba(251,191,36,0.25)]'
+                : 'hover:bg-white/[0.06]'
             }`}
+            title={isTeam1Won ? "Bấm để hủy / đặt lại kết quả" : "Bấm vào nửa sân Đội 1 để chọn Đội 1 chiến thắng"}
           >
-            <span>VS</span>
-            <span className={isLight ? 'text-slate-400' : 'text-slate-500'}>|</span>
-            <span className={isLight ? 'text-slate-700 font-bold' : 'text-slate-300 font-medium'}>
-              Δ {court.eloDiff} Elo
-            </span>
+            {/* 2 Vị Trí VĐV Đội 1 (Nằm trong 2 ô giao cầu trái / phải) */}
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 relative z-20 my-auto">
+              {court.team1.map(player => (
+                <PlayerCourtSlot
+                  key={player.id}
+                  player={player}
+                  sessionStats={sessionStats}
+                  courtIdx={court.courtIndex}
+                  courtName={`Sân ${court.courtIndex + 1}`}
+                  teamName="Đội 1"
+                  isLight={isLight}
+                  isSelectedForSwap={swapCandidatePlayerId === player.id}
+                  onOpenSwapModal={onOpenSwapModal}
+                />
+              ))}
+            </div>
+
+            {/* Vùng trước lưới (No-service zone của Đội 1 ~1.98m) */}
+            <div className="h-8 sm:h-10 pointer-events-none" />
+          </div>
+
+          {/* Lưới Cầu Lông ở chính giữa (The Net Line) */}
+          <div className="relative z-20 flex items-center justify-center my-0 pointer-events-none">
+            {/* Dải lưới ngang */}
+            <div className="absolute inset-0 flex flex-col justify-center">
+              <div className="w-full h-1 bg-white/90 shadow-xs" />
+              <div className="w-full h-3.5 bg-slate-950/70 border-y border-white/30 backdrop-blur-xs" />
+            </div>
+
+            {/* Huy hiệu trung tâm lưới (Hiển thị tỷ số hoặc độ chênh Elo) */}
+            <div
+              className={`relative px-3 py-0.5 rounded-full text-[10px] font-black flex items-center gap-1.5 shadow-md border pointer-events-auto transition-all ${
+                hasScore
+                  ? 'bg-amber-400 text-slate-950 border-amber-300 font-black shadow-md'
+                  : 'bg-white text-emerald-950 border-white/50 shadow-xs'
+              }`}
+            >
+              {hasScore ? (
+                <span className="tracking-widest text-xs font-black">
+                  {recordedScore.score1} - {recordedScore.score2}
+                </span>
+              ) : (
+                <>
+                  <span className="text-emerald-900 font-black tracking-wider">LƯỚI</span>
+                  <span className="opacity-40">•</span>
+                  <span>Δ {court.eloDiff} Elo</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Nửa Sân Dưới: Đội 2 (Click vào nửa sân để chọn hoặc hủy Đội 2 thắng) */}
+          <div
+            role="button"
+            tabIndex={0}
+            onClick={() => {
+              if (isTeam2Won) {
+                onClearCourtScore(court);
+              } else {
+                onQuickSaveScore(court, 18, 21);
+              }
+            }}
+            className={`relative z-10 min-h-[190px] sm:min-h-[210px] flex flex-col justify-between pt-2 pb-7 sm:pb-8 px-1 transition-all cursor-pointer rounded-b-lg group ${
+              isTeam2Won
+                ? 'bg-amber-400/15 ring-2 ring-amber-400/70 ring-inset shadow-[inset_0_0_24px_rgba(251,191,36,0.25)]'
+                : 'hover:bg-white/[0.06]'
+            }`}
+            title={isTeam2Won ? "Bấm để hủy / đặt lại kết quả" : "Bấm vào nửa sân Đội 2 để chọn Đội 2 chiến thắng"}
+          >
+            {/* Vùng trước lưới (No-service zone của Đội 2 ~1.98m) */}
+            <div className="h-8 sm:h-10 pointer-events-none" />
+
+            {/* 2 Vị Trí VĐV Đội 2 (Nằm trong 2 ô giao cầu trái / phải) */}
+            <div className="grid grid-cols-2 gap-1.5 sm:gap-2 relative z-20 my-auto">
+              {court.team2.map(player => (
+                <PlayerCourtSlot
+                  key={player.id}
+                  player={player}
+                  sessionStats={sessionStats}
+                  courtIdx={court.courtIndex}
+                  courtName={`Sân ${court.courtIndex + 1}`}
+                  teamName="Đội 2"
+                  isLight={isLight}
+                  isSelectedForSwap={swapCandidatePlayerId === player.id}
+                  onOpenSwapModal={onOpenSwapModal}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
-        {/* Team 2 Box */}
+        {/* Header Đội 2 Bar (Tách biệt ở phía dưới, không bị vạch sân đè lên) */}
         <div
-          className={`p-3 rounded-xl border space-y-2 ${
-            isLight ? 'bg-slate-50/90 border-slate-200/80' : 'bg-slate-950/40 border-white/5'
+          role="button"
+          tabIndex={0}
+          onClick={() => {
+            if (isTeam2Won) {
+              onClearCourtScore(court);
+            } else {
+              onQuickSaveScore(court, 18, 21);
+            }
+          }}
+          className={`relative z-20 px-3 py-2 flex items-center justify-between text-xs transition-colors cursor-pointer border-t ${
+            isTeam2Won
+              ? 'bg-amber-500/20 border-amber-400/40'
+              : 'bg-black/25 hover:bg-black/35 border-white/10'
           }`}
+          title={isTeam2Won ? "Bấm để hủy / đặt lại kết quả" : "Bấm để chọn Đội 2 chiến thắng"}
         >
-          <div className="flex items-center justify-between text-[11px] font-semibold px-1">
-            <span className={isLight ? 'text-slate-600' : 'text-slate-400'}>ĐỘI 2</span>
-            <span className={`font-bold ${isLight ? 'text-teal-700' : 'text-teal-400'}`}>
+          <div className="flex items-center gap-2">
+            <span className={`px-2 py-0.5 rounded-md font-black text-[10px] tracking-wider uppercase border shadow-xs transition-all ${
+              isTeam2Won
+                ? 'bg-amber-400 text-slate-950 border-amber-300 shadow-amber-500/20'
+                : 'bg-white/15 text-white border-white/20'
+            }`}>
+              Đội 2
+            </span>
+            {isTeam2Won ? (
+              <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-black bg-amber-400 text-slate-950 border border-amber-300 shadow-xs transition-all hover:bg-rose-50 hover:text-rose-600 group/win">
+                <Check className="w-3 h-3 stroke-[3] text-slate-950 group-hover/win:hidden" />
+                <X className="w-3 h-3 stroke-[3] text-rose-500 hidden group-hover/win:inline" />
+                <span>Thắng</span>
+                <span className="text-[9px] text-rose-500 font-normal ml-0.5 hidden group-hover/win:inline">Hủy</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-medium text-white/60 hover:text-white transition-colors">
+                Chọn thắng
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-1.5 font-bold">
+            {hasScore && (
+              <span className={`text-xs ${isTeam2Won ? 'text-amber-300 font-black drop-shadow-xs' : 'text-white/60'}`}>
+                {recordedScore.score2} đ
+              </span>
+            )}
+            <span className="text-[11px] text-white/95 font-bold drop-shadow-xs">
               Elo TB: {court.team2Elo}
             </span>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            {court.team2.map(player => (
-              <PlayerCourtSlot
-                key={player.id}
-                player={player}
-                sessionStats={sessionStats}
-                courtIdx={court.courtIndex}
-                isLight={isLight}
-                isSelectedForSwap={swapTarget?.playerId === player.id}
-                onSwapClick={onSwapClick}
-              />
-            ))}
           </div>
         </div>
       </div>
 
       {/* Card Action Buttons */}
-      <div className={`pt-3 mt-3 border-t flex items-center justify-between gap-2 ${isLight ? 'border-slate-200/80' : 'border-white/10'}`}>
-        <Button
-          type="button"
-          variant="ghost"
-          size="sm"
-          onClick={() => onPlayMatch(court)}
-          className={`h-9 px-3 text-xs font-semibold cursor-pointer rounded-xl ${
-            isLight
-              ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
-              : 'text-slate-400 hover:text-white hover:bg-white/5'
-          }`}
-          title="Mở form ghi nhận điểm số chi tiết"
-        >
-          <SlidersHorizontal className="w-3.5 h-3.5 mr-1.5" />
-          Form chi tiết
-        </Button>
-
-        <Button
-          type="button"
-          onClick={onOpenQuickScore}
-          className={`h-9 px-4 text-xs font-bold rounded-xl cursor-pointer active:scale-98 transition-all flex items-center gap-1.5 ${
-            recordedScore
-              ? isLight
-                ? 'bg-emerald-600 hover:bg-emerald-700 text-white-force shadow-sm'
-                : 'bg-emerald-600/80 hover:bg-emerald-600 text-white-force shadow-sm'
-              : isLight
-              ? 'bg-teal-600 hover:bg-teal-700 text-white-force shadow-sm'
-              : 'bg-teal-600 hover:bg-teal-500 text-white-force shadow-md'
-          }`}
-        >
+      <div className={`pt-3 mt-3 border-t flex flex-wrap items-center justify-between gap-2 ${isLight ? 'border-slate-100' : 'border-white/5'}`}>
+        <div className="flex items-center gap-1.5">
           {recordedScore ? (
-            <>
-              <Edit3 className="w-3.5 h-3.5" />
-              <span>Sửa điểm ({recordedScore.score1}-{recordedScore.score2})</span>
-            </>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onOpenQuickScore}
+              className={`h-9 px-2.5 text-xs font-semibold cursor-pointer rounded-xl ${
+                isLight
+                  ? 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                  : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }`}
+              title="Sửa điểm số trận đấu"
+            >
+              <Edit3 className="w-3.5 h-3.5 mr-1" />
+              Sửa ({recordedScore.score1}-{recordedScore.score2})
+            </Button>
           ) : (
-            <>
+            <Button
+              type="button"
+              onClick={onOpenQuickScore}
+              className="h-9 px-3.5 text-xs font-bold rounded-xl cursor-pointer active:scale-98 transition-all flex items-center gap-1.5 bg-teal-600 hover:bg-teal-700 text-white-force shadow-sm"
+              title="Ghi điểm nhanh cho trận này"
+            >
               <Zap className="w-3.5 h-3.5 fill-current" />
-              <span>Ghi điểm nhanh</span>
-            </>
+              Ghi điểm
+            </Button>
           )}
-        </Button>
+        </div>
+
+        {/* Nút Kết thúc & Bốc trận mới cuốn chiếu */}
+        {recordedScore ? (
+          <Button
+            type="button"
+            onClick={() => onRotateCourt(court)}
+            className="h-9 sm:h-10 px-3.5 sm:px-4 text-xs font-black rounded-xl cursor-pointer active:scale-98 transition-all flex items-center gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white-force shadow-md shadow-emerald-950/20"
+            title="Lưu kết quả trận này và bốc ngay người từ ghế chờ vào sân tiếp tục thi đấu"
+          >
+            <RotateCw className="w-3.5 h-3.5" />
+            <span>Kết thúc & Bốc trận mới</span>
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={onOpenQuickScore}
+            className={`h-9 px-3 text-xs font-medium rounded-xl cursor-pointer transition-all flex items-center gap-1.5 border ${
+              isLight
+                ? 'border-slate-200 text-slate-500 hover:text-slate-800 hover:bg-slate-50'
+                : 'border-white/10 text-slate-400 hover:text-white hover:bg-white/5'
+            }`}
+            title="Bấm chọn đội thắng trên sân hoặc ghi điểm để kết thúc"
+          >
+            <RotateCw className="w-3.5 h-3.5 opacity-40" />
+            <span className="hidden sm:inline">Chưa ghi điểm</span>
+            <span className="sm:hidden">Kết thúc</span>
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -900,18 +1193,22 @@ interface PlayerCourtSlotProps {
   player: MatchmakerPlayer;
   sessionStats: Record<string, PlayerSessionStats>;
   courtIdx: number;
+  courtName: string;
+  teamName: string;
   isLight: boolean;
   isSelectedForSwap: boolean;
-  onSwapClick: (target: SelectedSwapTarget) => void;
+  onOpenSwapModal: (player: MatchmakerPlayer, source: SelectedSwapTarget, label: string) => void;
 }
 
 function PlayerCourtSlot({
   player,
   sessionStats,
   courtIdx,
+  courtName,
+  teamName,
   isLight,
   isSelectedForSwap,
-  onSwapClick,
+  onOpenSwapModal,
 }: PlayerCourtSlotProps) {
   const isFemale = player.gender === 'female';
   const stats = sessionStats[player.id];
@@ -920,36 +1217,26 @@ function PlayerCourtSlot({
   return (
     <button
       type="button"
-      onClick={() => onSwapClick({ type: 'court', playerId: player.id, courtIdx })}
-      className={`flex items-center gap-2 p-2 rounded-xl border text-left transition-all duration-200 cursor-pointer group ${
+      onClick={(e) => {
+        e.stopPropagation();
+        onOpenSwapModal(
+          player,
+          { type: 'court', playerId: player.id, courtIdx },
+          teamName
+        );
+      }}
+      className={`flex items-center justify-between p-2 sm:p-2.5 rounded-xl text-left transition-all duration-200 cursor-pointer group active:scale-[0.98] ${
         isSelectedForSwap
-          ? isLight
-            ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-400 text-amber-950 scale-[1.02]'
-            : 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900 scale-[1.02]'
+          ? 'bg-amber-300 ring-2 ring-amber-400 text-amber-950 font-black shadow-md'
           : isLight
-          ? 'bg-white border-slate-200/80 hover:border-teal-400 hover:bg-teal-50/20 shadow-xs'
-          : 'bg-white/5 border-white/10 hover:border-teal-500/40 hover:bg-white/10'
+          ? 'bg-white/95 hover:bg-white text-slate-900 shadow-sm border border-emerald-950/20 hover:border-amber-400 hover:shadow-md'
+          : 'bg-slate-900/95 hover:bg-slate-900 text-white shadow-sm border border-white/20 hover:border-amber-400 hover:shadow-md'
       }`}
-      title="Bấm để đổi vị trí người chơi"
+      title="Bấm để đổi người thi đấu"
     >
-      {/* Squircle Gender Avatar */}
-      <div
-        className={`w-8 h-8 rounded-xl border flex items-center justify-center font-black text-xs flex-shrink-0 transition-colors ${
-          isFemale
-            ? isLight
-              ? 'bg-pink-50 border-pink-200 text-pink-700'
-              : 'bg-pink-500/15 border-pink-500/30 text-pink-300'
-            : isLight
-            ? 'bg-sky-50 border-sky-200 text-sky-700'
-            : 'bg-sky-500/15 border-sky-500/30 text-sky-300'
-        }`}
-      >
-        {player.name.slice(0, 1).toUpperCase()}
-      </div>
-
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-1">
-          <span className={`text-[12.5px] font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
+          <span className={`text-[11px] sm:text-xs font-black truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
             {player.name}
           </span>
           {isFemale ? (
@@ -958,20 +1245,32 @@ function PlayerCourtSlot({
             <Mars className="w-3 h-3 text-sky-500 flex-shrink-0" />
           )}
         </div>
-        <div className="flex items-center gap-1.5 mt-0.5">
-          <span className={`text-[10px] font-bold ${isLight ? 'text-teal-700' : 'text-teal-300'}`}>
-            {player.elo} Elo
+        <div className="flex items-center gap-1 mt-0.5 text-[9px] sm:text-[10px]">
+          <span className={`font-black ${isLight ? 'text-teal-700' : 'text-teal-300'}`}>
+            {player.elo}
           </span>
+          <span className={isLight ? 'text-slate-400' : 'text-slate-500'}>Elo</span>
           {matchesPlayed > 0 && (
-            <span className={`px-1 py-0.2 rounded text-[9px] font-semibold ${
+            <span className={`ml-0.5 px-1 py-0.2 rounded text-[8px] font-semibold ${
               isLight ? 'bg-slate-100 text-slate-600' : 'bg-white/10 text-slate-300'
             }`}>
-              {matchesPlayed} trận
+              {matchesPlayed}t
             </span>
           )}
         </div>
       </div>
-      <ArrowRightLeft className="w-3.5 h-3.5 text-slate-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0" />
+      <div className="flex items-center ml-1 flex-shrink-0">
+        <span
+          className={`p-1 rounded-md transition-colors ${
+            isLight
+              ? 'bg-slate-100 text-slate-400 group-hover:text-amber-600 group-hover:bg-amber-50'
+              : 'bg-white/10 text-slate-400 group-hover:text-amber-400 group-hover:bg-amber-500/20'
+          }`}
+          title="Đổi người"
+        >
+          <ArrowRightLeft className="w-2.5 h-2.5" />
+        </span>
+      </div>
     </button>
   );
 }
@@ -983,22 +1282,22 @@ interface BenchLoungeProps {
   bench: MatchmakerPlayer[];
   sessionStats: Record<string, PlayerSessionStats>;
   isLight: boolean;
-  swapTarget: SelectedSwapTarget | null;
-  onSwapClick: (target: SelectedSwapTarget) => void;
+  swapCandidatePlayerId?: string;
+  onOpenSwapModal: (player: MatchmakerPlayer, source: SelectedSwapTarget, label: string) => void;
 }
 
 function BenchLounge({
   bench,
   sessionStats,
   isLight,
-  swapTarget,
-  onSwapClick,
+  swapCandidatePlayerId,
+  onOpenSwapModal,
 }: BenchLoungeProps) {
   if (bench.length === 0) return null;
 
   return (
     <Card
-      className={`p-4 rounded-2xl backdrop-blur-sm ${
+      className={`p-3.5 sm:p-4 rounded-2xl backdrop-blur-sm ${
         isLight ? 'bg-white border-slate-200/90 shadow-sm' : 'border-white/10 bg-slate-950/30'
       }`}
     >
@@ -1018,71 +1317,399 @@ function BenchLounge({
         </span>
       </div>
 
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-2">
+      <div className="flex flex-col gap-2">
         {bench.map(player => {
           const stats = sessionStats[player.id];
-          const matchesPlayed = stats?.matchesPlayed || 0;
           const consecutiveRest = stats?.consecutiveRest || 0;
-          const isSelected = swapTarget?.playerId === player.id;
+          const isSelected = swapCandidatePlayerId === player.id;
           const isFemale = player.gender === 'female';
 
           return (
             <button
               key={player.id}
               type="button"
-              onClick={() => onSwapClick({ type: 'bench', playerId: player.id })}
-              className={`p-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer flex items-center gap-2 group ${
+              onClick={() => onOpenSwapModal(player, { type: 'bench', playerId: player.id }, 'Băng ghế chờ')}
+              className={`w-full grid grid-cols-[1fr_24px_56px_68px] sm:grid-cols-[1fr_28px_68px_80px] items-center gap-2.5 sm:gap-3 px-3 sm:px-4 py-2.5 rounded-xl border text-left transition-all duration-200 cursor-pointer group active:scale-[0.99] ${
                 isSelected
                   ? isLight
-                    ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-400 text-amber-950'
+                    ? 'bg-amber-100 border-amber-400 ring-2 ring-amber-400 text-amber-950 shadow-xs'
                     : 'bg-amber-500/25 border-amber-400 ring-2 ring-amber-400 ring-offset-2 ring-offset-slate-900'
                   : isLight
-                  ? 'bg-slate-50/80 border-slate-200 hover:border-slate-300 text-slate-800'
-                  : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/10 text-white'
+                  ? 'bg-slate-50/90 hover:bg-white border-slate-200 hover:border-teal-400 text-slate-800 shadow-xs'
+                  : 'bg-white/5 border-white/10 hover:border-white/20 hover:bg-white/10 text-white'
               }`}
             >
-              {/* Squircle Gender Avatar */}
-              <div
-                className={`w-7 h-7 rounded-lg border flex items-center justify-center font-bold text-xs flex-shrink-0 ${
-                  isFemale
-                    ? isLight
-                      ? 'bg-pink-50 border-pink-200 text-pink-700'
-                      : 'bg-pink-500/15 border-pink-500/30 text-pink-300'
-                    : isLight
-                    ? 'bg-sky-50 border-sky-200 text-sky-700'
-                    : 'bg-sky-500/15 border-sky-500/30 text-sky-300'
-                }`}
-              >
-                {player.name.slice(0, 1).toUpperCase()}
+              {/* Cột 1: Tên người chơi */}
+              <span className={`text-xs sm:text-sm font-bold truncate min-w-0 ${isLight ? 'text-slate-900' : 'text-white'}`}>
+                {player.name}
+              </span>
+
+              {/* Cột 2: Biểu tượng giới tính (căn dọc thẳng hàng) */}
+              <div className="flex items-center justify-center">
+                {isFemale ? (
+                  <Venus className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />
+                ) : (
+                  <Mars className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
+                )}
               </div>
 
-              <div className="min-w-0 flex-1">
-                <div className="flex items-center justify-between">
-                  <span className={`text-xs font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>
-                    {player.name}
-                  </span>
-                  {isFemale ? (
-                    <Venus className="w-3 h-3 text-pink-500 flex-shrink-0" />
-                  ) : (
-                    <Mars className="w-3 h-3 text-sky-500 flex-shrink-0" />
-                  )}
-                </div>
-                <div className="flex items-center gap-1 text-[10px] mt-0.5">
-                  <span className={`font-semibold ${isLight ? 'text-teal-700' : 'text-teal-300'}`}>
-                    {player.elo}
-                  </span>
-                  <span className={`px-1 py-0.2 rounded text-[9px] font-bold ${
-                    isLight ? 'bg-amber-100 text-amber-900' : 'bg-amber-500/20 text-amber-300'
-                  }`}>
-                    Nghỉ {consecutiveRest + 1}
-                  </span>
-                </div>
+              {/* Cột 3: Điểm số Elo (căn dọc thẳng hàng sang phải) */}
+              <div className="text-right whitespace-nowrap">
+                <span className={`text-xs sm:text-sm font-bold ${isLight ? 'text-teal-700' : 'text-teal-300'}`}>
+                  {player.elo}
+                </span>
+                <span className={`text-[10px] ml-1 hidden sm:inline ${isLight ? 'text-slate-400' : 'text-slate-500'}`}>
+                  Elo
+                </span>
+              </div>
+
+              {/* Cột 5: Tag lượt nghỉ (căn dọc thẳng hàng) */}
+              <div className="flex justify-end">
+                <span className={`px-2 py-0.5 rounded-md text-[10px] sm:text-xs font-bold whitespace-nowrap text-center ${
+                  isLight
+                    ? 'bg-amber-100 text-amber-950 border border-amber-300'
+                    : 'bg-amber-500/20 text-amber-300 border border-amber-500/30'
+                }`}>
+                  Nghỉ {consecutiveRest + 1}
+                </span>
               </div>
             </button>
           );
         })}
       </div>
     </Card>
+  );
+}
+
+// -------------------------------------------------------------
+// Component: Swap Player Modal (Popup chọn người thay thế)
+// -------------------------------------------------------------
+interface SwapPlayerModalProps {
+  candidate: {
+    player: MatchmakerPlayer;
+    source: SelectedSwapTarget;
+    label: string;
+  };
+  currentMatchup: MatchmakingResult;
+  sessionStats: Record<string, PlayerSessionStats>;
+  isLight: boolean;
+  onClose: () => void;
+  onConfirmSwap: (target: SelectedSwapTarget) => void;
+}
+
+function SwapPlayerModal({
+  candidate,
+  currentMatchup,
+  sessionStats,
+  isLight,
+  onClose,
+  onConfirmSwap,
+}: SwapPlayerModalProps) {
+  const [filterQuery, setFilterQuery] = useState('');
+  const { player: sourcePlayer, label: sourceLabel } = candidate;
+
+  // Khóa cuộn trang web bên dưới khi popup hiển thị
+  useEffect(() => {
+    const originalOverflow = document.body.style.overflow;
+    const originalTouchAction = document.body.style.touchAction;
+    document.body.style.overflow = 'hidden';
+    document.body.style.touchAction = 'none';
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.touchAction = originalTouchAction;
+    };
+  }, []);
+
+  // Lấy danh sách băng ghế chờ (loại trừ chính candidate nếu candidate đang ở bench)
+  const benchCandidates = currentMatchup.benchPlayers.filter(p => p.id !== sourcePlayer.id);
+
+  // Lấy danh sách tất cả các cầu thủ trên các sân
+  const courtPlayersList: {
+    player: MatchmakerPlayer;
+    courtIdx: number;
+    courtName: string;
+    teamName: string;
+  }[] = [];
+
+  currentMatchup.courts.forEach(court => {
+    const cName = `Sân ${court.courtIndex + 1}`;
+    court.team1.forEach(p => {
+      if (p.id !== sourcePlayer.id) {
+        courtPlayersList.push({ player: p, courtIdx: court.courtIndex, courtName: cName, teamName: 'Đội 1' });
+      }
+    });
+    court.team2.forEach(p => {
+      if (p.id !== sourcePlayer.id) {
+        courtPlayersList.push({ player: p, courtIdx: court.courtIndex, courtName: cName, teamName: 'Đội 2' });
+      }
+    });
+  });
+
+  const query = filterQuery.toLowerCase().trim();
+  const filteredBench = benchCandidates.filter(p => !query || p.name.toLowerCase().includes(query));
+  const filteredCourtPlayers = courtPlayersList.filter(
+    item => !query || item.player.name.toLowerCase().includes(query)
+  );
+
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
+    <div
+      className="fixed inset-0 z-[100] flex items-center justify-center p-3 sm:p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200 overscroll-contain touch-none"
+      onClick={onClose}
+    >
+      <div
+        className={`w-full max-w-lg max-h-[85vh] rounded-3xl border shadow-2xl flex flex-col overflow-hidden animate-in zoom-in-95 duration-200 overscroll-contain touch-auto ${
+          isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-white/10 text-white'
+        }`}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className={`p-4 border-b flex items-start justify-between gap-3 ${isLight ? 'border-slate-200 bg-slate-50/70' : 'border-white/10 bg-white/5'}`}>
+          <div className="flex items-center gap-3 min-w-0">
+            <span className="p-2.5 rounded-2xl bg-amber-500/15 text-amber-500 border border-amber-500/25 flex-shrink-0">
+              <ArrowRightLeft className="w-5 h-5" />
+            </span>
+            <div className="min-w-0">
+              <h3 className="font-black text-base leading-tight">Đổi người thi đấu</h3>
+              <p className={`text-xs mt-0.5 ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+                Chọn một người để hoán đổi vị trí với{' '}
+                <strong className={`font-black ${isLight ? 'text-slate-900' : 'text-white'}`}>{sourcePlayer.name}</strong>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-white/10 transition-colors flex-shrink-0"
+            aria-label="Đóng"
+          >
+            <X className="w-5 h-5" />
+          </button>
+        </div>
+
+        {/* Selected Player Current Position Card */}
+        <div className={`px-4 py-3 border-b flex items-center justify-between gap-3 ${isLight ? 'bg-amber-50/90 border-amber-200/90' : 'bg-amber-500/10 border-amber-500/20'}`}>
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5">
+              <span className={`font-black text-base truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{sourcePlayer.name}</span>
+              {sourcePlayer.gender === 'female' ? (
+                <Venus className="w-4 h-4 text-pink-500 flex-shrink-0" />
+              ) : (
+                <Mars className="w-4 h-4 text-sky-500 flex-shrink-0" />
+              )}
+            </div>
+            <div className="text-[11px] flex items-center gap-2 font-medium mt-0.5">
+              <span className={isLight ? 'text-slate-600 font-semibold' : 'text-slate-300'}>{sourcePlayer.elo} Elo</span>
+              <span className="text-slate-400">•</span>
+              {sourceLabel === 'Đội 1' || sourceLabel === 'Đội 2' ? (
+                <span
+                  className={`px-1.5 py-0.5 rounded-md text-[9px] font-black border ${
+                    sourceLabel === 'Đội 1'
+                      ? isLight
+                        ? 'bg-teal-50 border-teal-300 text-teal-800'
+                        : 'bg-teal-500/15 border-teal-500/30 text-teal-300'
+                      : isLight
+                      ? 'bg-indigo-50 border-indigo-300 text-indigo-800'
+                      : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300'
+                  }`}
+                >
+                  {sourceLabel}
+                </span>
+              ) : (
+                <span className={`font-bold ${isLight ? 'text-amber-900' : 'text-amber-300'}`}>{sourceLabel}</span>
+              )}
+            </div>
+          </div>
+
+          <span className={`text-[11px] font-black px-2.5 py-1 rounded-full border shadow-xs flex-shrink-0 ${
+            isLight
+              ? 'bg-amber-600 border-amber-700 text-white-force'
+              : 'bg-amber-500/20 border-amber-500/40 text-amber-300'
+          }`}>
+            Đang đổi vị trí
+          </span>
+        </div>
+
+        {/* Search Bar */}
+        {(benchCandidates.length + courtPlayersList.length > 6) && (
+          <div className={`p-3 border-b ${isLight ? 'border-slate-200' : 'border-white/10'}`}>
+            <div className="relative">
+              <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+              <Input
+                placeholder="Tìm người thay thế theo tên..."
+                value={filterQuery}
+                onChange={e => setFilterQuery(e.target.value)}
+                className={`pl-9 h-9 text-xs rounded-xl ${
+                  isLight
+                    ? 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'
+                    : 'border-white/10 bg-slate-950/60 text-slate-200 placeholder:text-slate-500'
+                }`}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Player List (Scrollable) */}
+        <div className="flex-1 overflow-y-auto p-4 space-y-4 scroll-hide overscroll-contain touch-pan-y">
+          {/* Section 1: Bench Candidates */}
+          {filteredBench.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className={`text-[11px] font-black uppercase tracking-wider flex items-center gap-1.5 ${
+                  isLight ? 'text-amber-900' : 'text-amber-400'
+                }`}>
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  Băng ghế chờ ({filteredBench.length} người đang nghỉ)
+                </span>
+                <span className={`text-[10px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>Bấm để đưa vào sân</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredBench.map(p => {
+                  const stats = sessionStats[p.id];
+                  const consecutiveRest = stats?.consecutiveRest || 0;
+                  const isFemale = p.gender === 'female';
+
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => onConfirmSwap({ type: 'bench', playerId: p.id })}
+                      className={`p-2.5 rounded-xl border text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer group active:scale-[0.98] ${
+                        isLight
+                          ? 'bg-slate-50 hover:bg-teal-50 hover:border-teal-400 border-slate-200 text-slate-800'
+                          : 'bg-white/5 hover:bg-teal-500/15 hover:border-teal-500/40 border-white/5 text-white'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-xs sm:text-sm font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{p.name}</span>
+                          {isFemale ? (
+                            <Venus className="w-3.5 h-3.5 text-pink-500 flex-shrink-0" />
+                          ) : (
+                            <Mars className="w-3.5 h-3.5 text-sky-500 flex-shrink-0" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] mt-0.5">
+                          <span className={`font-semibold ${isLight ? 'text-teal-700' : 'text-teal-400'}`}>
+                            {p.elo} Elo
+                          </span>
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] font-black ${
+                            isLight ? 'bg-amber-100 text-amber-950 border border-amber-300' : 'bg-amber-500/20 text-amber-300'
+                          }`}>
+                            Nghỉ {consecutiveRest + 1}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 flex-shrink-0 ${
+                        isLight
+                          ? 'bg-teal-600 hover:bg-teal-700 text-white-force border-teal-600'
+                          : 'bg-teal-600 hover:bg-teal-500 text-white-force border-teal-500'
+                      }`}>
+                        Đổi
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {/* Section 2: Court Players */}
+          {filteredCourtPlayers.length > 0 && (
+            <div>
+              <div className="flex items-center justify-between mb-2 px-1">
+                <span className="text-[11px] font-black uppercase tracking-wider text-teal-600 dark:text-teal-400 flex items-center gap-1.5">
+                  <Users className="w-3.5 h-3.5" />
+                  Cầu thủ trên các sân ({filteredCourtPlayers.length} người)
+                </span>
+                <span className="text-[10px] text-slate-400 font-medium">Bấm để tráo vị trí</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {filteredCourtPlayers.map(item => {
+                  const { player: p, courtIdx, courtName, teamName } = item;
+                  const isFemale = p.gender === 'female';
+
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => onConfirmSwap({ type: 'court', playerId: p.id, courtIdx })}
+                      className={`p-2.5 rounded-xl border text-left flex items-center justify-between gap-2.5 transition-all cursor-pointer group active:scale-[0.98] ${
+                        isLight
+                          ? 'bg-slate-50 hover:bg-teal-50 hover:border-teal-400 border-slate-200 text-slate-800'
+                          : 'bg-white/5 hover:bg-teal-500/15 hover:border-teal-500/40 border-white/5 text-white'
+                      }`}
+                    >
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1">
+                          <span className={`text-xs font-bold truncate ${isLight ? 'text-slate-900' : 'text-white'}`}>{p.name}</span>
+                          {isFemale ? (
+                            <Venus className="w-3 h-3 text-pink-500 flex-shrink-0" />
+                          ) : (
+                            <Mars className="w-3 h-3 text-sky-500 flex-shrink-0" />
+                          )}
+                        </div>
+                        <div className="flex items-center gap-1.5 text-[10px] mt-0.5">
+                          <span className={`font-semibold ${isLight ? 'text-teal-700' : 'text-teal-400'}`}>
+                            {p.elo} Elo
+                          </span>
+                          <span
+                            className={`px-1.5 py-0.5 rounded-md text-[9px] font-black border ${
+                              teamName === 'Đội 1'
+                                ? isLight
+                                  ? 'bg-teal-50 border-teal-300 text-teal-800'
+                                  : 'bg-teal-500/15 border-teal-500/30 text-teal-300'
+                                : isLight
+                                ? 'bg-indigo-50 border-indigo-300 text-indigo-800'
+                                : 'bg-indigo-500/15 border-indigo-500/30 text-indigo-300'
+                            }`}
+                          >
+                            {teamName}
+                          </span>
+                        </div>
+                      </div>
+
+                      <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border transition-colors flex items-center gap-1 flex-shrink-0 ${
+                        isLight
+                          ? 'bg-teal-600 hover:bg-teal-700 text-white-force border-teal-600'
+                          : 'bg-teal-600 hover:bg-teal-500 text-white-force border-teal-500'
+                      }`}>
+                        Đổi
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
+          {filteredBench.length === 0 && filteredCourtPlayers.length === 0 && (
+            <div className="py-8 text-center text-xs text-slate-400">
+              Không tìm thấy cầu thủ phù hợp để hoán đổi.
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className={`p-3.5 border-t flex items-center justify-end ${isLight ? 'border-slate-200 bg-slate-50/50' : 'border-white/10 bg-white/5'}`}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            onClick={onClose}
+            className={`text-xs rounded-xl px-4 cursor-pointer ${isLight ? 'text-slate-600' : 'text-slate-400'}`}
+          >
+            Đóng / Hủy
+          </Button>
+        </div>
+      </div>
+    </div>,
+    document.body
   );
 }
 
@@ -1123,13 +1750,15 @@ function QuickScoreDialog({
     onSave(Number(s1), Number(s2));
   };
 
-  return (
+  if (typeof document === 'undefined') return null;
+
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/75 backdrop-blur-md animate-in fade-in duration-200 overscroll-contain touch-none"
       onClick={onClose}
     >
       <div
-        className={`w-full max-w-md rounded-2xl border p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 ${
+        className={`w-full max-w-md rounded-2xl border p-5 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 overscroll-contain touch-auto ${
           isLight ? 'bg-white border-slate-200 text-slate-900' : 'bg-slate-900 border-white/10 text-white'
         }`}
         onClick={e => e.stopPropagation()}
@@ -1139,7 +1768,7 @@ function QuickScoreDialog({
           <div>
             <span className="text-[10px] font-black uppercase tracking-wider text-teal-600 dark:text-teal-400">Ghi điểm trực tiếp</span>
             <h3 className="font-black text-base">
-              {court.courtName || `Sân ${court.courtIndex + 1}`}
+              {`Sân ${court.courtIndex + 1}`}
             </h3>
           </div>
           <button
@@ -1177,8 +1806,8 @@ function QuickScoreDialog({
             </div>
 
             {/* Team 2 */}
-            <div className={`p-3 rounded-xl border text-center ${isLight ? 'bg-sky-50/60 border-sky-200' : 'bg-sky-500/10 border-sky-500/20'}`}>
-              <span className="text-[10px] font-black uppercase tracking-wider block text-sky-700 dark:text-sky-400">
+            <div className={`p-3 rounded-xl border text-center ${isLight ? 'bg-indigo-50/60 border-indigo-200' : 'bg-indigo-500/10 border-indigo-500/20'}`}>
+              <span className="text-[10px] font-black uppercase tracking-wider block text-indigo-700 dark:text-indigo-400">
                 Đội 2
               </span>
               <p className="text-xs font-bold truncate mt-0.5">{team2Names}</p>
@@ -1191,7 +1820,7 @@ function QuickScoreDialog({
                   onChange={e => setS2(e.target.value === '' ? '' : Number(e.target.value))}
                   required
                   className={`text-center text-2xl font-black h-12 rounded-xl ${
-                    isLight ? 'bg-white border-sky-300 text-slate-900' : 'bg-slate-950 border-sky-500/30 text-white'
+                    isLight ? 'bg-white border-indigo-300 text-slate-900' : 'bg-slate-950 border-indigo-500/30 text-white'
                   }`}
                 />
               </div>
@@ -1265,6 +1894,7 @@ function QuickScoreDialog({
           </div>
         </form>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }

@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect } from 'react';
+import { v4 as uuidv4 } from 'uuid';
 import { useStore } from '../../store';
 import { format } from 'date-fns';
 import { getGroupMatches, getGroupPlayers } from '../../utils/groupUtils';
@@ -6,6 +7,7 @@ import { calculateLeaderboard } from '../../utils/calculations';
 import {
   generateRoundMatchups,
   updateSessionAfterRound,
+  rotateSingleCourt,
   swapCourtPlayers,
   swapCourtWithBench,
   MatchmakerPlayer,
@@ -27,10 +29,11 @@ export type SelectedSwapTarget =
 export interface RecordedCourtScore {
   score1: number;
   score2: number;
+  matchId?: string;
 }
 
 export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
-  const { players, matches, courts: registeredCourts, selectedGroupId, theme, addMatch } = useStore();
+  const { players, matches, courts: registeredCourts, selectedGroupId, theme, addMatch, updateMatch, deleteMatch } = useStore();
   const isLight = theme === 'light';
 
   // 1. Get players in current group with their computed Elo
@@ -223,6 +226,33 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
     showNotification('info', 'Đã khởi tạo lại buổi đánh mới từ lượt #1.');
   };
 
+  const handleSwapPlayers = (source: SelectedSwapTarget, target: SelectedSwapTarget) => {
+    if (!currentMatchup) return;
+    if (source.playerId === target.playerId) return;
+
+    let newCourts = [...currentMatchup.courts];
+    let newBench = [...currentMatchup.benchPlayers];
+
+    if (source.type === 'court' && target.type === 'court') {
+      newCourts = swapCourtPlayers(newCourts, source.playerId, target.playerId);
+    } else if (source.type === 'court' && target.type === 'bench') {
+      const swapped = swapCourtWithBench(newCourts, newBench, source.playerId, target.playerId);
+      newCourts = swapped.courts;
+      newBench = swapped.bench;
+    } else if (source.type === 'bench' && target.type === 'court') {
+      const swapped = swapCourtWithBench(newCourts, newBench, target.playerId, source.playerId);
+      newCourts = swapped.courts;
+      newBench = swapped.bench;
+    }
+
+    setCurrentMatchup({
+      courts: newCourts,
+      benchPlayers: newBench,
+    });
+    setSwapTarget(null);
+    showNotification('success', 'Đã hoán đổi vị trí và cân bằng lại kèo đấu!');
+  };
+
   const handleSwapClick = (clicked: SelectedSwapTarget) => {
     if (!currentMatchup) return;
 
@@ -272,23 +302,111 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
   };
 
   const handleQuickSaveScore = (court: CourtMatch, score1: number, score2: number) => {
-    addMatch({
-      groupId: selectedGroupId,
-      date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
-      team1: [court.team1[0].id, court.team1[1].id],
-      team2: [court.team2[0].id, court.team2[1].id],
-      isScoreExact: true,
-      score1,
-      score2,
-    });
+    const existing = recordedScores[court.courtIndex];
+    if (existing?.matchId) {
+      updateMatch(existing.matchId, {
+        score1,
+        score2,
+        team1: [court.team1[0].id, court.team1[1].id],
+        team2: [court.team2[0].id, court.team2[1].id],
+      });
+      setRecordedScores(prev => ({
+        ...prev,
+        [court.courtIndex]: { score1, score2, matchId: existing.matchId },
+      }));
+    } else {
+      const newMatchId = uuidv4();
+      addMatch({
+        id: newMatchId,
+        groupId: selectedGroupId,
+        date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        team1: [court.team1[0].id, court.team1[1].id],
+        team2: [court.team2[0].id, court.team2[1].id],
+        isScoreExact: true,
+        score1,
+        score2,
+      });
+      setRecordedScores(prev => ({
+        ...prev,
+        [court.courtIndex]: { score1, score2, matchId: newMatchId },
+      }));
+    }
 
-    setRecordedScores(prev => ({
-      ...prev,
-      [court.courtIndex]: { score1, score2 },
-    }));
+    const courtTitle = `Sân ${court.courtIndex + 1}`;
+    showNotification('success', `Đã ghi nhận kết quả ${courtTitle} (${score1} - ${score2})!`);
+  };
+
+  const handleClearCourtScore = (court: CourtMatch) => {
+    const existing = recordedScores[court.courtIndex];
+    if (existing?.matchId) {
+      deleteMatch(existing.matchId);
+    }
+    setRecordedScores(prev => {
+      const copy = { ...prev };
+      delete copy[court.courtIndex];
+      return copy;
+    });
+    const courtTitle = `Sân ${court.courtIndex + 1}`;
+    showNotification('success', `Đã hủy kết quả ghi nhận của ${courtTitle}!`);
+  };
+
+  const handleRotateCourt = (court: CourtMatch) => {
+    if (!currentMatchup) return;
+
+    const existing = recordedScores[court.courtIndex];
+    if (!existing) {
+      showNotification(
+        'info',
+        `Vui lòng chọn đội thắng hoặc nhập điểm cho Sân ${court.courtIndex + 1} trước khi kết thúc!`
+      );
+      return;
+    }
+
+    // 1. Lưu điểm trận đấu vào CSDL nếu chưa có
+    if (existing.matchId) {
+      updateMatch(existing.matchId, {
+        score1: existing.score1,
+        score2: existing.score2,
+        team1: [court.team1[0].id, court.team1[1].id],
+        team2: [court.team2[0].id, court.team2[1].id],
+      });
+    } else {
+      const newMatchId = uuidv4();
+      addMatch({
+        id: newMatchId,
+        groupId: selectedGroupId,
+        date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+        team1: [court.team1[0].id, court.team1[1].id],
+        team2: [court.team2[0].id, court.team2[1].id],
+        isScoreExact: true,
+        score1: existing.score1,
+        score2: existing.score2,
+      });
+    }
+
+    // 2. Xoay tua cuốn chiếu riêng cho sân này (giữ nguyên các sân khác)
+    const { newMatchup, newStats, newHistory } = rotateSingleCourt(
+      court.courtIndex,
+      currentMatchup,
+      sessionStats,
+      partnerHistory,
+      courtNames
+    );
+
+    setSessionStats(newStats);
+    setPartnerHistory(newHistory);
+    setCurrentMatchup(newMatchup);
+
+    // 3. Xóa điểm đã ghi cho riêng sân này để sẵn sàng trận mới
+    setRecordedScores(prev => {
+      const copy = { ...prev };
+      delete copy[court.courtIndex];
+      return copy;
+    });
+    setSwapTarget(null);
 
     const courtTitle = court.courtName || `Sân ${court.courtIndex + 1}`;
-    showNotification('success', `Đã lưu kết quả ${courtTitle} (${score1} - ${score2}) vào bảng xếp hạng!`);
+    showNotification('success', `Đã lưu kết quả & bốc xong trận mới cho ${courtTitle}!`);
   };
 
   return (
@@ -311,8 +429,11 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       onConfirmNextRound={handleConfirmAndNextRound}
       onResetSession={handleResetSession}
       onSwapClick={handleSwapClick}
+      onSwapPlayers={handleSwapPlayers}
       onPlayMatch={handlePlayMatch}
       onQuickSaveScore={handleQuickSaveScore}
+      onClearCourtScore={handleClearCourtScore}
+      onRotateCourt={handleRotateCourt}
     />
   );
 }

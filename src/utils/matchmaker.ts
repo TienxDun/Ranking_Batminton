@@ -399,3 +399,111 @@ export function swapCourtWithBench(
 
   return { courts: newCourts, bench: newBench };
 }
+
+/**
+ * Completes a single court's match, saves its stats, and generates a new matchup for that court
+ * by rotating in available players (bench players + players who just finished on that court).
+ * All other courts remain completely active and untouched.
+ */
+export function rotateSingleCourt(
+  finishedCourtIdx: number,
+  currentMatchup: MatchmakingResult,
+  sessionStats: Record<string, PlayerSessionStats>,
+  partnerHistory: PartnerHistoryMap,
+  courtNames?: string[]
+): {
+  newMatchup: MatchmakingResult;
+  newStats: Record<string, PlayerSessionStats>;
+  newHistory: PartnerHistoryMap;
+} {
+  const courtIndex = currentMatchup.courts.findIndex(c => c.courtIndex === finishedCourtIdx);
+  if (courtIndex === -1) {
+    return { newMatchup: currentMatchup, newStats: sessionStats, newHistory: partnerHistory };
+  }
+
+  const finishedCourt = currentMatchup.courts[courtIndex];
+  const [p1, p2] = finishedCourt.team1;
+  const [p3, p4] = finishedCourt.team2;
+  const finishedPlayers = [p1, p2, p3, p4];
+
+  // 1. Record partner history for finished players
+  const newHistory: PartnerHistoryMap = { ...partnerHistory };
+  const k1 = getPartnerKey(p1.id, p2.id);
+  const k2 = getPartnerKey(p3.id, p4.id);
+  newHistory[k1] = (newHistory[k1] || 0) + 1;
+  newHistory[k2] = (newHistory[k2] || 0) + 1;
+
+  // 2. Update matchesPlayed for finished players
+  const newStats: Record<string, PlayerSessionStats> = { ...sessionStats };
+  finishedPlayers.forEach(p => {
+    const old = newStats[p.id] || { playerId: p.id, matchesPlayed: 0, consecutiveRest: 0 };
+    newStats[p.id] = {
+      playerId: p.id,
+      matchesPlayed: old.matchesPlayed + 1,
+      consecutiveRest: 0,
+    };
+  });
+
+  // 3. Pool of available players: Bench + the 4 finished players
+  const availablePool: MatchmakerPlayer[] = [
+    ...currentMatchup.benchPlayers,
+    ...finishedPlayers,
+  ];
+
+  if (availablePool.length < 4) {
+    return { newMatchup: currentMatchup, newStats, newHistory };
+  }
+
+  // 4. Select 4 players: prioritize players with fewer matchesPlayed, then higher consecutiveRest
+  const scored = availablePool.map(p => {
+    const stats = newStats[p.id] || { playerId: p.id, matchesPlayed: 0, consecutiveRest: 0 };
+    const score = stats.matchesPlayed * 1000 - stats.consecutiveRest * 50 + Math.random() * 5;
+    return { player: p, score };
+  });
+
+  scored.sort((a, b) => a.score - b.score);
+
+  const nextPlaying = scored.slice(0, 4).map(s => s.player);
+  const nextBench = scored.slice(4).map(s => s.player);
+
+  // 5. Update consecutiveRest:
+  // - Players who go to bench: if they were already on bench, increment rest; if newly arrived from court, rest = 1
+  nextBench.forEach(p => {
+    const wasOnBench = currentMatchup.benchPlayers.some(bp => bp.id === p.id);
+    const old = newStats[p.id] || { playerId: p.id, matchesPlayed: 0, consecutiveRest: 0 };
+    newStats[p.id] = {
+      ...old,
+      consecutiveRest: wasOnBench ? old.consecutiveRest + 1 : 1,
+    };
+  });
+
+  // - Players who enter court: consecutiveRest is 0
+  nextPlaying.forEach(p => {
+    const old = newStats[p.id] || { playerId: p.id, matchesPlayed: 0, consecutiveRest: 0 };
+    newStats[p.id] = {
+      ...old,
+      consecutiveRest: 0,
+    };
+  });
+
+  // 6. Form optimal pairing for this court
+  const newCourtMatch = findBestCourtPairing(
+    nextPlaying,
+    finishedCourtIdx,
+    newHistory,
+    courtNames?.[finishedCourtIdx] || finishedCourt.courtName
+  );
+
+  // 7. Replace finished court with new court match, leave other courts untouched
+  const newCourts = [...currentMatchup.courts];
+  newCourts[courtIndex] = newCourtMatch;
+
+  return {
+    newMatchup: {
+      courts: newCourts,
+      benchPlayers: nextBench,
+    },
+    newStats,
+    newHistory,
+  };
+}
