@@ -100,16 +100,17 @@ export default function MatchmakerView({
     const isAnyModalOpen = Boolean(
       isCheckInModalOpen || swapCandidate || quickScoreCourt || isResetConfirmOpen
     );
-    if (!isAnyModalOpen) return;
-
-    const originalOverflow = document.body.style.overflow;
-    const originalTouchAction = document.body.style.touchAction;
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
+    if (isAnyModalOpen) {
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+    } else {
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
+    }
 
     return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.touchAction = originalTouchAction;
+      document.body.style.overflow = '';
+      document.body.style.touchAction = '';
     };
   }, [isCheckInModalOpen, swapCandidate, quickScoreCourt, isResetConfirmOpen]);
 
@@ -1399,19 +1400,6 @@ function SwapPlayerModal({
 }: SwapPlayerModalProps) {
   const [filterQuery, setFilterQuery] = useState('');
   const { player: sourcePlayer, label: sourceLabel } = candidate;
-
-  // Khóa cuộn trang web bên dưới khi popup hiển thị
-  useEffect(() => {
-    const originalOverflow = document.body.style.overflow;
-    const originalTouchAction = document.body.style.touchAction;
-    document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
-
-    return () => {
-      document.body.style.overflow = originalOverflow;
-      document.body.style.touchAction = originalTouchAction;
-    };
-  }, []);
 
   // Lấy danh sách băng ghế chờ (loại trừ chính candidate nếu candidate đang ở bench)
   const benchCandidates = currentMatchup.benchPlayers.filter(p => p.id !== sourcePlayer.id);
