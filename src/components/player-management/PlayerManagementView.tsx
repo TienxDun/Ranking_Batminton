@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import {
   AlertCircle,
   CheckCircle2,
+  ChevronDown,
   Layers3,
   Mars,
   Minus,
@@ -13,6 +14,7 @@ import {
   UserPlus,
   Venus,
   Eye,
+  X,
 } from 'lucide-react';
 import { LeaderboardConfig, Player, PlayerGroup } from '../../types';
 import { DEFAULT_GROUP_ID } from '../../constants/groups';
@@ -69,49 +71,49 @@ function SystemSettingsCard({ model }: { model: PlayerManagementViewModel }) {
   const { config, setConfig, runAdminAction, isLight } = model;
   return (
     <Card className={isLight ? 'bg-white border-slate-200/90 shadow-sm' : 'bg-slate-900 border-white/10'}>
-      <CardHeader className="text-left pb-3">
+      <CardHeader className="text-left pb-2.5">
         <div className="flex items-center gap-2">
           <SlidersHorizontal className={`w-4 h-4 ${isLight ? 'text-teal-600' : 'text-teal-400'}`} />
           <CardTitle className={`text-sm xs:text-base sm:text-lg font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
             CÀI ĐẶT HỆ THỐNG
           </CardTitle>
         </div>
-        <CardDescription className={isLight ? 'text-slate-500' : 'text-slate-400'}>
-          Cấu hình quy tắc xếp hạng chung
+        <CardDescription className={`text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
+          Quy tắc xếp hạng
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-0">
-        <div className={`flex items-center justify-between gap-3 p-3.5 sm:p-4 rounded-xl border ${
-          isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-white/5 border-white/5'
+        <div className={`flex items-center justify-between gap-3 p-3 rounded-xl ${
+          isLight ? 'bg-slate-50/70' : 'bg-white/[0.03]'
         }`}>
           <div className="space-y-0.5 min-w-0 pr-2">
             <label className={`text-xs sm:text-sm font-semibold block ${isLight ? 'text-slate-800' : 'text-slate-200'}`}>
-              Số trận tối thiểu để vào BXH chính
+              Số trận tối thiểu vào BXH
             </label>
             <p className={`text-[11px] sm:text-xs ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-              Yêu cầu tối thiểu để người chơi hiển thị trên bảng chính
+              Điều kiện hiển thị trên bảng chính
             </p>
           </div>
           <div className="flex-shrink-0">
-            <div className={`flex items-center justify-between rounded-xl p-1 w-28 sm:w-32 h-9 border ${
-              isLight ? 'bg-white border-slate-300 shadow-xs' : 'bg-slate-950 border-white/10'
+            <div className={`flex items-center justify-between rounded-lg p-0.5 w-24 sm:w-28 h-8 border ${
+              isLight ? 'bg-white border-slate-200 shadow-2xs' : 'bg-slate-950 border-white/10'
             }`}>
               <button
                 type="button"
                 onClick={() => runAdminAction(() => setConfig({ minMatchesForMainBoard: Math.max(1, config.minMatchesForMainBoard - 1) }))}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                className={`w-6 h-6 rounded flex items-center justify-center transition-colors cursor-pointer ${
                   isLight
                     ? 'hover:bg-slate-100 active:bg-slate-200 text-slate-600 hover:text-slate-900 disabled:opacity-30 disabled:cursor-not-allowed'
                     : 'hover:bg-white/5 active:bg-white/10 text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed'
                 }`}
                 disabled={config.minMatchesForMainBoard <= 1}
               >
-                <Minus className="w-3.5 h-3.5" />
+                <Minus className="w-3 h-3" />
               </button>
               
               <input
                 type="number"
-                className={`w-10 sm:w-12 text-center font-bold bg-transparent border-0 focus:outline-none focus:ring-0 text-xs sm:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
+                className={`w-8 sm:w-10 text-center font-bold bg-transparent border-0 focus:outline-none focus:ring-0 text-xs sm:text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none ${
                   isLight ? 'text-slate-900' : 'text-white'
                 }`}
                 min="1"
@@ -122,13 +124,13 @@ function SystemSettingsCard({ model }: { model: PlayerManagementViewModel }) {
               <button
                 type="button"
                 onClick={() => runAdminAction(() => setConfig({ minMatchesForMainBoard: config.minMatchesForMainBoard + 1 }))}
-                className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                className={`w-6 h-6 rounded flex items-center justify-center transition-colors cursor-pointer ${
                   isLight
                     ? 'hover:bg-slate-100 active:bg-slate-200 text-slate-600 hover:text-slate-900'
                     : 'hover:bg-white/5 active:bg-white/10 text-slate-400 hover:text-white'
                 }`}
               >
-                <Plus className="w-3.5 h-3.5" />
+                <Plus className="w-3 h-3" />
               </button>
             </div>
           </div>
@@ -484,6 +486,8 @@ function PlayerEloSliderCell({
 function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
   const { runAdminAction, activeGroups, players, updatePlayer, togglePlayerGroup, handleDeletePlayerClick, isLight } = model;
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [isColumnMenuOpen, setIsColumnMenuOpen] = React.useState(false);
+  const columnDropdownRef = React.useRef<HTMLDivElement>(null);
 
   const [visibleColumns, setVisibleColumns] = React.useState<ColumnVisibility>(() => {
     try {
@@ -498,6 +502,21 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
     };
   });
 
+  // Đóng dropdown khi bấm ra ngoài
+  React.useEffect(() => {
+    function handleClickOutside(event: MouseEvent) {
+      if (columnDropdownRef.current && !columnDropdownRef.current.contains(event.target as Node)) {
+        setIsColumnMenuOpen(false);
+      }
+    }
+    if (isColumnMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isColumnMenuOpen]);
+
   const toggleColumn = (key: keyof ColumnVisibility) => {
     setVisibleColumns(prev => {
       const next = { ...prev, [key]: !prev[key] };
@@ -508,6 +527,18 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
     });
   };
 
+  const applyPreset = (preset: 'compact' | 'all') => {
+    const next: ColumnVisibility = preset === 'compact'
+      ? { gender: true, elo: true, group: false, status: false }
+      : { gender: true, elo: true, group: true, status: true };
+    setVisibleColumns(next);
+    try {
+      localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(next));
+    } catch {}
+  };
+
+  const activeColumnCount = Object.values(visibleColumns).filter(Boolean).length;
+
   const filteredPlayers = React.useMemo(() => {
     if (!searchQuery.trim()) return players;
     const q = searchQuery.toLowerCase().trim();
@@ -516,28 +547,38 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
 
   return (
     <div className="space-y-2">
-      {/* Thanh bộ lọc & tùy chọn hiển thị cột */}
-      <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
-        isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-900/60 border-white/10'
+      {/* Thanh bộ lọc & tùy chọn hiển thị cột - Thiết kế 1 hàng liền mạch, không vỡ layout */}
+      <div className={`p-2 sm:p-2.5 rounded-xl border flex items-center justify-between gap-2 ${
+        isLight ? 'bg-slate-50/80 border-slate-200/80 shadow-2xs' : 'bg-slate-900/60 border-white/10'
       }`}>
         {/* Tìm kiếm người chơi */}
-        <div className="relative flex-1 max-w-xs">
-          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+        <div className="relative flex-1 min-w-0">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
           <Input
             placeholder="Tìm theo tên..."
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
-            className={`h-8 pl-8 text-xs rounded-lg ${
+            className={`h-8 pl-8 pr-7 text-xs rounded-lg w-full transition-all ${
               isLight
-                ? 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'
-                : 'bg-white/5 border-white/10 text-white placeholder:text-slate-500'
+                ? 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400 focus-visible:border-teal-500 focus-visible:ring-teal-500/20 shadow-2xs'
+                : 'bg-white/5 border-white/10 text-white placeholder:text-slate-500 focus-visible:border-teal-500'
             }`}
           />
+          {searchQuery && (
+            <button
+              type="button"
+              onClick={() => setSearchQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 w-4 h-4 rounded-full flex items-center justify-center text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              title="Xóa tìm kiếm"
+            >
+              <X className="w-3 h-3" />
+            </button>
+          )}
         </div>
 
-        {/* Bộ lọc bật/tắt cột */}
-        <div className="flex items-center gap-1.5 flex-wrap">
-          <span className={`text-[11px] font-bold uppercase tracking-wider mr-1 flex items-center gap-1 ${
+        {/* Desktop: Hiển thị các nút chip trực tiếp trên 1 hàng duy nhất */}
+        <div className="hidden sm:flex items-center gap-1.5 shrink-0">
+          <span className={`text-[11px] font-bold uppercase tracking-wider mr-0.5 flex items-center gap-1 ${
             isLight ? 'text-slate-500' : 'text-slate-400'
           }`}>
             <SlidersHorizontal className="w-3 h-3 text-teal-500" />
@@ -563,7 +604,7 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
                       : 'bg-teal-500/20 border-teal-500/40 text-teal-300 font-black'
                     : isLight
                     ? 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300'
-                    : 'bg-white/5 border-white/10 text-slate-500 hover:text-slate-300'
+                    : 'bg-white/5 border-white/10 text-slate-400 hover:text-slate-200'
                 }`}
                 title={isVisible ? `Bấm để ẩn cột ${col.label}` : `Bấm để hiện cột ${col.label}`}
               >
@@ -572,6 +613,96 @@ function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
               </button>
             );
           })}
+        </div>
+
+        {/* Mobile: Nút dropdown gọn gàng kèm Popover menu */}
+        <div className="relative sm:hidden shrink-0" ref={columnDropdownRef}>
+          <button
+            type="button"
+            onClick={() => setIsColumnMenuOpen(prev => !prev)}
+            className={`h-8 px-2.5 rounded-lg border text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs ${
+              isLight
+                ? isColumnMenuOpen
+                  ? 'bg-teal-50 border-teal-400 text-teal-800'
+                  : 'bg-white border-slate-200 text-slate-700 hover:bg-slate-50'
+                : isColumnMenuOpen
+                ? 'bg-teal-500/20 border-teal-500 text-teal-300'
+                : 'bg-white/5 border-white/10 text-slate-200 hover:bg-white/10'
+            }`}
+            title="Tùy chọn cột hiển thị"
+          >
+            <SlidersHorizontal className="w-3.5 h-3.5 text-teal-500" />
+            <span>Cột</span>
+            <span className="text-[10px] px-1.5 py-0.2 rounded-full font-bold bg-teal-500/15 text-teal-600 dark:text-teal-400">
+              {activeColumnCount}/4
+            </span>
+            <ChevronDown className={`w-3 h-3 text-slate-400 transition-transform duration-200 ${isColumnMenuOpen ? 'rotate-180' : ''}`} />
+          </button>
+
+          {/* Menu Dropdown trên mobile */}
+          {isColumnMenuOpen && (
+            <div className={`absolute right-0 top-full mt-1.5 z-40 w-52 p-2 rounded-xl border shadow-xl animate-in fade-in zoom-in-95 duration-150 ${
+              isLight ? 'bg-white border-slate-200 text-slate-800' : 'bg-slate-900 border-white/15 text-slate-100'
+            }`}>
+              <div className="px-2 py-1 text-[11px] font-bold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                <span>Cột hiển thị</span>
+                <span className="text-teal-500 font-mono">{activeColumnCount}/4</span>
+              </div>
+
+              <div className="space-y-0.5 my-1">
+                {[
+                  { key: 'gender', label: 'Giới tính' },
+                  { key: 'elo', label: 'Elo (Thanh trượt)' },
+                  { key: 'group', label: 'Nhóm' },
+                  { key: 'status', label: 'Trạng thái' },
+                ].map(col => {
+                  const isChecked = visibleColumns[col.key as keyof ColumnVisibility];
+                  return (
+                    <button
+                      key={col.key}
+                      type="button"
+                      onClick={() => toggleColumn(col.key as keyof ColumnVisibility)}
+                      className={`w-full px-2.5 py-2 rounded-lg flex items-center justify-between text-xs transition-colors cursor-pointer text-left ${
+                        isChecked
+                          ? isLight ? 'bg-teal-50 text-teal-900 font-bold' : 'bg-teal-500/15 text-teal-200 font-bold'
+                          : isLight ? 'hover:bg-slate-50 text-slate-600' : 'hover:bg-white/5 text-slate-400'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-4 h-4 rounded border flex items-center justify-center text-[10px] font-bold ${
+                          isChecked
+                            ? 'bg-teal-500 border-teal-500 text-white'
+                            : isLight ? 'border-slate-300 bg-white' : 'border-white/20 bg-transparent'
+                        }`}>
+                          {isChecked ? '✓' : ''}
+                        </span>
+                        <span>{col.label}</span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              <div className={`pt-1.5 mt-1 border-t flex items-center justify-between gap-1 text-[11px] ${
+                isLight ? 'border-slate-100' : 'border-white/10'
+              }`}>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('compact')}
+                  className="px-2 py-1 text-slate-500 hover:text-teal-600 font-semibold rounded cursor-pointer"
+                >
+                  Mặc định
+                </button>
+                <button
+                  type="button"
+                  onClick={() => applyPreset('all')}
+                  className="px-2 py-1 text-teal-600 font-bold rounded cursor-pointer"
+                >
+                  Hiện tất cả
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
