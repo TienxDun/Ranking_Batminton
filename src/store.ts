@@ -105,8 +105,10 @@ interface AppState {
   addGroup: (name: string) => void;
   updateGroup: (id: string, updates: Partial<Omit<PlayerGroup, 'id'>>) => void;
   archiveGroup: (id: string) => void;
+  deleteGroup: (id: string) => void;
   addPlayer: (name: string, gender?: 'male' | 'female', groupIds?: string[]) => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
+  deletePlayer: (id: string) => void;
   addMatch: (match: Omit<Match, 'id'>) => void;
   updateMatch: (id: string, updates: Partial<Match>) => void;
   deleteMatch: (id: string) => void;
@@ -270,6 +272,48 @@ export const useStore = create<AppState>()(
           sync({ groups: newGroups });
         },
 
+        deleteGroup: (id) => {
+          if (id === DEFAULT_GROUP_ID) return;
+          const currentGroups = get().groups;
+          if (currentGroups.length <= 1) return;
+
+          const newGroups = currentGroups.filter(group => group.id !== id);
+          const activeGroup = newGroups.find(group => group.isActive);
+          const fallbackGroupId = activeGroup?.id || newGroups[0]?.id || DEFAULT_GROUP_ID;
+
+          const newSelectedGroupId = get().selectedGroupId === id
+            ? fallbackGroupId
+            : get().selectedGroupId;
+
+          const newPlayers = get().players.map(player => {
+            const currentGroupIds = player.groupIds || [DEFAULT_GROUP_ID];
+            if (!currentGroupIds.includes(id)) return player;
+            const updatedGroupIds = currentGroupIds.filter(gId => gId !== id);
+            return {
+              ...player,
+              groupIds: updatedGroupIds.length > 0 ? updatedGroupIds : [fallbackGroupId],
+            };
+          });
+
+          const newMatches = get().matches.filter(match => (match.groupId || DEFAULT_GROUP_ID) !== id);
+          const newSessionCosts = get().sessionCosts.filter(session => (session.groupId || DEFAULT_GROUP_ID) !== id);
+
+          set({
+            groups: newGroups,
+            selectedGroupId: newSelectedGroupId,
+            players: newPlayers,
+            matches: newMatches,
+            sessionCosts: newSessionCosts,
+          });
+
+          sync({
+            groups: newGroups,
+            players: newPlayers,
+            matches: newMatches,
+            sessionCosts: newSessionCosts,
+          });
+        },
+
         addPlayer: (name, gender = 'male', groupIds) => {
           const selectedGroupId = get().selectedGroupId || DEFAULT_GROUP_ID;
           const newPlayers = [
@@ -290,6 +334,30 @@ export const useStore = create<AppState>()(
           const newPlayers = get().players.map(p => p.id === id ? { ...p, ...updates } : p);
           set({ players: newPlayers });
           sync({ players: newPlayers });
+        },
+
+        deletePlayer: (id) => {
+          const newPlayers = get().players.filter(p => p.id !== id);
+          const newMatches = get().matches.filter(m => !m.team1.includes(id) && !m.team2.includes(id));
+          const newSessionCosts = get().sessionCosts.map(s => {
+            if (!s.participantIds?.includes(id)) return s;
+            return {
+              ...s,
+              participantIds: s.participantIds.filter(pId => pId !== id),
+            };
+          });
+
+          set({
+            players: newPlayers,
+            matches: newMatches,
+            sessionCosts: newSessionCosts,
+          });
+
+          sync({
+            players: newPlayers,
+            matches: newMatches,
+            sessionCosts: newSessionCosts,
+          });
         },
         
         addMatch: (match) => {
