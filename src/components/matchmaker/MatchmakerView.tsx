@@ -186,13 +186,13 @@ export default function MatchmakerView({
           </div>
         </CardHeader>
 
-        <CardContent className="space-y-4 pt-1 px-4 sm:px-6 pb-5">
-          {/* Controls Grid */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+        <CardContent className="space-y-3 pt-1 px-4 sm:px-6 pb-5">
+          {/* Tier 1: Configuration Controls (2 Equal Columns, Clean Heights) */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {/* 1. Touch-friendly Court Stepper */}
             <div
-              className={`p-3 rounded-2xl border flex items-center justify-between transition-all ${
-                isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-white/5 border-white/5'
+              className={`p-3.5 rounded-2xl border flex items-center justify-between transition-all min-h-[70px] ${
+                isLight ? 'bg-slate-50/80 border-slate-200/90 shadow-xs' : 'bg-white/5 border-white/5'
               }`}
             >
               <div>
@@ -200,10 +200,10 @@ export default function MatchmakerView({
                   Số sân thi đấu
                 </span>
                 <span className={`text-[11px] font-medium ${isLight ? 'text-slate-500' : 'text-slate-400'}`}>
-                  Cần {neededPlayers} người ({numCourts} sân x 4)
+                  Cần {neededPlayers} VĐV ({numCourts} sân)
                 </span>
               </div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setNumCourts(prev => Math.max(1, prev - 1))}
@@ -240,9 +240,9 @@ export default function MatchmakerView({
             <button
               type="button"
               onClick={() => setIsCheckInModalOpen(true)}
-              className={`p-3 rounded-2xl border flex items-center justify-between text-left transition-all duration-200 cursor-pointer group active:scale-[0.99] ${
+              className={`p-3.5 rounded-2xl border flex items-center justify-between text-left transition-all duration-200 cursor-pointer group active:scale-[0.99] min-h-[70px] ${
                 isLight
-                  ? 'bg-slate-50/80 border-slate-200 hover:border-teal-400 hover:bg-teal-50/30'
+                  ? 'bg-slate-50/80 border-slate-200/90 hover:border-teal-400 hover:bg-teal-50/30 shadow-xs'
                   : 'bg-white/5 border-white/5 hover:border-teal-500/40 hover:bg-white/10'
               }`}
             >
@@ -263,9 +263,9 @@ export default function MatchmakerView({
                 </div>
               </div>
 
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-2">
                 <span
-                  className={`px-2 py-1 rounded-lg text-[11px] font-bold border transition-colors ${
+                  className={`px-2.5 py-1 rounded-xl text-xs font-bold border transition-colors ${
                     isEnoughPlayers
                       ? isLight
                         ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
@@ -275,31 +275,29 @@ export default function MatchmakerView({
                       : 'bg-amber-500/15 border-amber-500/30 text-amber-300'
                   }`}
                 >
-                  {isEnoughPlayers ? `Đủ ${maxCourtsPossible} sân` : `Thiếu ${neededPlayers - checkedInIds.length} người`}
+                  {isEnoughPlayers ? `Đủ ${maxCourtsPossible} sân` : `Thiếu ${neededPlayers - checkedInIds.length}`}
                 </span>
                 <ChevronDown className="w-4 h-4 text-slate-400 group-hover:text-teal-400 transition-colors" />
               </div>
             </button>
-
-            {/* 3. Smart Action Button (Differentiated visual style) */}
-            <div className="flex items-center sm:col-span-2 lg:col-span-1">
-              <Button
-                type="button"
-                onClick={onGenerate}
-                disabled={checkedInIds.length < 4}
-                className={`w-full h-12 rounded-2xl font-bold text-xs sm:text-sm border transition-all active:scale-[0.98] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2 ${
-                  currentMatchup
-                    ? isLight
-                      ? 'bg-teal-50 hover:bg-teal-100 text-teal-900 border-teal-300/80 shadow-sm'
-                      : 'bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 border-teal-500/30 shadow-sm'
-                    : 'bg-teal-600 hover:bg-teal-700 text-white-force shadow-md shadow-teal-600/20'
-                }`}
-              >
-                <Sparkles className={`w-4 h-4 ${currentMatchup ? (isLight ? 'text-teal-700' : 'text-teal-400') : 'text-white-force'}`} />
-                <span>{currentMatchup ? 'Đổi Kèo Lượt Này' : 'Xếp Sân Tự Động'}</span>
-              </Button>
-            </div>
           </div>
+
+          {/* Tier 2: Dedicated Primary Action CTA (Full Width, Perfectly Aligned) */}
+          <Button
+            type="button"
+            onClick={onGenerate}
+            disabled={checkedInIds.length < 4}
+            className={`w-full h-12 rounded-2xl font-bold text-sm border transition-all active:scale-[0.99] cursor-pointer disabled:opacity-50 flex items-center justify-center gap-2.5 shadow-md ${
+              currentMatchup
+                ? isLight
+                  ? 'bg-teal-50 hover:bg-teal-100/80 text-teal-900 border-teal-300/80 shadow-xs'
+                  : 'bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 border-teal-500/30 shadow-sm'
+                : 'bg-teal-600 hover:bg-teal-700 text-white-force shadow-teal-600/25'
+            }`}
+          >
+            <Sparkles className={`w-4 h-4 ${currentMatchup ? (isLight ? 'text-teal-700' : 'text-teal-400') : 'text-white-force'}`} />
+            <span>{currentMatchup ? 'Đổi Kèo Lượt Này' : 'Xếp Sân Tự Động'}</span>
+          </Button>
         </CardContent>
       </Card>
 
