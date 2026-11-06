@@ -107,26 +107,30 @@ export default function MatchmakerView({
   const isAllCourtsRecorded = totalCourtsInRound > 0 && recordedCount >= totalCourtsInRound;
 
   return (
-    <div className="space-y-5 pb-12">
-      {/* Toast Notification */}
+    <div className="space-y-5 pb-12 relative">
+      {/* Floating Toast Notification (Zero Layout Shift - Không bao giờ đẩy giật giao diện) */}
       {notification && (
-        <div
-          className={`p-3.5 sm:p-4 rounded-2xl border flex items-center gap-3 animate-in fade-in slide-in-from-top-3 duration-200 shadow-xl ${
-            notification.type === 'success'
-              ? isLight
-                ? 'bg-emerald-50 border-emerald-300 text-emerald-950 shadow-emerald-500/10'
-                : 'bg-emerald-950/80 border-emerald-500/40 text-emerald-300 shadow-emerald-950/30'
-              : isLight
-              ? 'bg-teal-50 border-teal-300 text-teal-950 shadow-teal-500/10'
-              : 'bg-teal-950/80 border-teal-500/40 text-teal-300 shadow-teal-950/30'
-          }`}
-        >
-          {notification.type === 'success' ? (
-            <CheckCircle2 className={`w-5 h-5 flex-shrink-0 ${isLight ? 'text-emerald-600' : 'text-emerald-400'}`} />
-          ) : (
-            <AlertCircle className={`w-5 h-5 flex-shrink-0 ${isLight ? 'text-teal-600' : 'text-teal-400'}`} />
-          )}
-          <span className="text-xs sm:text-sm font-semibold leading-relaxed">{notification.text}</span>
+        <div className="fixed top-20 left-1/2 -translate-x-1/2 z-50 max-w-[92vw] sm:max-w-md pointer-events-none animate-in fade-in slide-in-from-top-4 duration-300">
+          <div
+            className={`px-4 py-2.5 rounded-full border flex items-center gap-2.5 shadow-2xl backdrop-blur-md pointer-events-auto ${
+              notification.type === 'success'
+                ? isLight
+                  ? 'bg-emerald-600 border-emerald-500 text-white-force shadow-emerald-950/20'
+                  : 'bg-emerald-600 border-emerald-400 text-white-force shadow-black/50'
+                : isLight
+                ? 'bg-teal-600 border-teal-500 text-white-force shadow-teal-950/20'
+                : 'bg-teal-600 border-teal-400 text-white-force shadow-black/50'
+            }`}
+          >
+            {notification.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-white-force" />
+            ) : (
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-white-force" />
+            )}
+            <span className="text-xs sm:text-sm font-bold text-white-force leading-tight">
+              {notification.text}
+            </span>
+          </div>
         </div>
       )}
 
@@ -408,16 +412,14 @@ export default function MatchmakerView({
             <Button
               type="button"
               onClick={onConfirmNextRound}
-              className={`w-full sm:w-auto h-11 px-8 rounded-2xl text-xs sm:text-sm font-bold shadow-lg cursor-pointer active:scale-98 transition-all flex items-center justify-center gap-2 ${
+              className={`w-full sm:w-auto h-12 px-8 rounded-2xl text-xs sm:text-sm font-bold shadow-lg cursor-pointer active:scale-98 transition-all flex items-center justify-center gap-2 ${
                 isAllCourtsRecorded
                   ? 'bg-teal-600 hover:bg-teal-700 text-white-force ring-4 ring-teal-500/20'
-                  : isLight
-                  ? 'bg-slate-800 hover:bg-slate-900 text-white'
-                  : 'bg-teal-600/90 hover:bg-teal-600 text-white'
+                  : 'bg-teal-600 hover:bg-teal-700 text-white-force shadow-teal-600/20'
               }`}
             >
-              <span>Xác nhận lượt #{roundNumber} & Xếp tiếp lượt #{roundNumber + 1}</span>
-              <ArrowRight className="w-4 h-4 text-current" />
+              <span className="text-white-force font-bold">Xác nhận lượt #{roundNumber} & Xếp tiếp lượt #{roundNumber + 1}</span>
+              <ArrowRight className="w-4 h-4 text-white-force" />
             </Button>
           </div>
         </div>
@@ -867,10 +869,10 @@ function CourtCard({
             recordedScore
               ? isLight
                 ? 'bg-emerald-600 hover:bg-emerald-700 text-white-force shadow-sm'
-                : 'bg-emerald-600/80 hover:bg-emerald-600 text-white shadow-sm'
+                : 'bg-emerald-600/80 hover:bg-emerald-600 text-white-force shadow-sm'
               : isLight
               ? 'bg-teal-600 hover:bg-teal-700 text-white-force shadow-sm'
-              : 'bg-teal-600 hover:bg-teal-500 text-white shadow-md'
+              : 'bg-teal-600 hover:bg-teal-500 text-white-force shadow-md'
           }`}
         >
           {recordedScore ? (
