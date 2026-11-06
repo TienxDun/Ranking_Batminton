@@ -9,19 +9,20 @@ import Analytics from './components/analytics/Analytics';
 import MatchForm from './components/match-form/MatchForm';
 import MatchHistory from './components/match-history/MatchHistory';
 import PlayerManagement from './components/player-management/PlayerManagement';
+import Matchmaker from './components/matchmaker/Matchmaker';
 import SessionCosts from './components/session-costs/SessionCosts';
 import PWAInstallPrompt from './components/PWAInstallPrompt';
 import OfflineNotice from './components/OfflineNotice';
 import { Button } from './components/ui/button';
-import { Trophy, PlusCircle, History, Users, Loader2, Sun, Moon, BarChart2, Settings, Wallet, AlertCircle, WifiOff } from 'lucide-react';
+import { Trophy, PlusCircle, History, Users, Loader2, Sun, Moon, BarChart2, Settings, Wallet, AlertCircle, WifiOff, Zap } from 'lucide-react';
 import { useStore } from './store';
 import { useOnlineStatus } from './hooks/useOnlineStatus';
 
-type Tab = 'dashboard' | 'analytics' | 'add' | 'history' | 'costs' | 'players';
+type Tab = 'dashboard' | 'analytics' | 'matchmaker' | 'add' | 'history' | 'costs' | 'players';
 
 const getTabFromHash = (hash: string): Tab => {
   const tab = hash.replace('#', '') as Tab;
-  const validTabs: Tab[] = ['dashboard', 'analytics', 'add', 'history', 'costs', 'players'];
+  const validTabs: Tab[] = ['dashboard', 'analytics', 'matchmaker', 'add', 'history', 'costs', 'players'];
   return validTabs.includes(tab) ? tab : 'dashboard';
 };
 
@@ -372,6 +373,14 @@ export default function App() {
           <Analytics active={activeTab === 'analytics'} />
         </div>
 
+        <div className={activeTab === 'matchmaker' ? 'tab-content-active' : 'hidden'}>
+          <Matchmaker 
+            onFillMatch={(matchData) => {
+              setPrefilledMatch(matchData);
+              changeTab('add');
+            }} 
+          />
+        </div>
         <div className={activeTab === 'add' ? 'tab-content-active' : 'hidden'}>
           <MatchForm 
             onSaved={() => {
