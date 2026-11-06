@@ -108,6 +108,7 @@ interface AppState {
   deleteGroup: (id: string) => void;
   addPlayer: (name: string, gender?: 'male' | 'female', groupIds?: string[]) => void;
   updatePlayer: (id: string, updates: Partial<Player>) => void;
+  deletePlayer: (id: string) => void;
   addMatch: (match: Omit<Match, 'id'>) => void;
   updateMatch: (id: string, updates: Partial<Match>) => void;
   deleteMatch: (id: string) => void;
@@ -333,6 +334,30 @@ export const useStore = create<AppState>()(
           const newPlayers = get().players.map(p => p.id === id ? { ...p, ...updates } : p);
           set({ players: newPlayers });
           sync({ players: newPlayers });
+        },
+
+        deletePlayer: (id) => {
+          const newPlayers = get().players.filter(p => p.id !== id);
+          const newMatches = get().matches.filter(m => !m.team1.includes(id) && !m.team2.includes(id));
+          const newSessionCosts = get().sessionCosts.map(s => {
+            if (!s.participantIds?.includes(id)) return s;
+            return {
+              ...s,
+              participantIds: s.participantIds.filter(pId => pId !== id),
+            };
+          });
+
+          set({
+            players: newPlayers,
+            matches: newMatches,
+            sessionCosts: newSessionCosts,
+          });
+
+          sync({
+            players: newPlayers,
+            matches: newMatches,
+            sessionCosts: newSessionCosts,
+          });
         },
         
         addMatch: (match) => {
