@@ -519,11 +519,6 @@ export default function MatchmakerView({
             onQuickSaveScore(quickScoreCourt, score1, score2);
             setQuickScoreCourt(null);
           }}
-          onOpenFullForm={() => {
-            const court = quickScoreCourt;
-            setQuickScoreCourt(null);
-            onPlayMatch(court);
-          }}
         />
       )}
 
@@ -1719,7 +1714,7 @@ interface QuickScoreDialogProps {
   existingScore?: RecordedCourtScore;
   onClose: () => void;
   onSave: (score1: number, score2: number) => void;
-  onOpenFullForm: () => void;
+  onOpenFullForm?: () => void;
 }
 
 function QuickScoreDialog({
@@ -1728,7 +1723,6 @@ function QuickScoreDialog({
   existingScore,
   onClose,
   onSave,
-  onOpenFullForm,
 }: QuickScoreDialogProps) {
   const [s1, setS1] = useState<number | ''>(existingScore?.score1 ?? 21);
   const [s2, setS2] = useState<number | ''>(existingScore?.score2 ?? 18);
@@ -1859,35 +1853,23 @@ function QuickScoreDialog({
           </div>
 
           {/* Actions */}
-          <div className="flex items-center justify-between gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
+          <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-200 dark:border-white/10">
             <Button
               type="button"
               variant="ghost"
               size="sm"
-              onClick={onOpenFullForm}
-              className={`text-xs h-9 rounded-xl ${isLight ? 'text-slate-600' : 'text-slate-400'}`}
+              onClick={onClose}
+              className="text-xs h-9 rounded-xl"
             >
-              Mở bảng form đầy đủ
+              Hủy
             </Button>
-
-            <div className="flex gap-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                className="text-xs h-9 rounded-xl"
-              >
-                Hủy
-              </Button>
-              <Button
-                type="submit"
-                size="sm"
-                className="h-9 px-4 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 text-white-force shadow-md"
-              >
-                Lưu kết quả & Elo
-              </Button>
-            </div>
+            <Button
+              type="submit"
+              size="sm"
+              className="h-9 px-4 text-xs font-bold rounded-xl bg-teal-600 hover:bg-teal-700 text-white-force shadow-md cursor-pointer"
+            >
+              Lưu kết quả & Elo
+            </Button>
           </div>
         </form>
       </div>
