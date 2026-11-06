@@ -1,5 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { useStore } from '../../store';
+import { format } from 'date-fns';
 import { getGroupMatches, getGroupPlayers } from '../../utils/groupUtils';
 import { calculateLeaderboard } from '../../utils/calculations';
 import {
@@ -23,8 +24,13 @@ export type SelectedSwapTarget =
   | { type: 'court'; playerId: string; courtIdx: number }
   | { type: 'bench'; playerId: string };
 
+export interface RecordedCourtScore {
+  score1: number;
+  score2: number;
+}
+
 export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
-  const { players, matches, courts: registeredCourts, selectedGroupId, theme } = useStore();
+  const { players, matches, courts: registeredCourts, selectedGroupId, theme, addMatch } = useStore();
   const isLight = theme === 'light';
 
   // 1. Get players in current group with their computed Elo
@@ -106,6 +112,14 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
     return null;
   });
 
+  const [recordedScores, setRecordedScores] = useState<Record<number, RecordedCourtScore>>(() => {
+    try {
+      const saved = localStorage.getItem(`${storageKey}_recordedScores`);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {};
+  });
+
   const [swapTarget, setSwapTarget] = useState<SelectedSwapTarget | null>(null);
   const [notification, setNotification] = useState<{ type: 'success' | 'info'; text: string } | null>(null);
 
@@ -117,13 +131,14 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       localStorage.setItem(`${storageKey}_roundNumber`, roundNumber.toString());
       localStorage.setItem(`${storageKey}_sessionStats`, JSON.stringify(sessionStats));
       localStorage.setItem(`${storageKey}_partnerHistory`, JSON.stringify(partnerHistory));
+      localStorage.setItem(`${storageKey}_recordedScores`, JSON.stringify(recordedScores));
       if (currentMatchup) {
         localStorage.setItem(`${storageKey}_currentMatchup`, JSON.stringify(currentMatchup));
       } else {
         localStorage.removeItem(`${storageKey}_currentMatchup`);
       }
     } catch {}
-  }, [storageKey, checkedInIds, numCourts, roundNumber, sessionStats, partnerHistory, currentMatchup]);
+  }, [storageKey, checkedInIds, numCourts, roundNumber, sessionStats, partnerHistory, currentMatchup, recordedScores]);
 
   const showNotification = (type: 'success' | 'info', text: string) => {
     setNotification({ type, text });
@@ -164,6 +179,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       courtNames
     );
     setCurrentMatchup(result);
+    setRecordedScores({});
     setSwapTarget(null);
     showNotification('success', `Đã xếp xong lượt ${roundNumber} với độ cân bằng tối ưu!`);
   };
@@ -182,6 +198,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
     setSessionStats(updatedStats);
     setPartnerHistory(updatedHistory);
     setRoundNumber(nextRound);
+    setRecordedScores({});
 
     // Automatically generate next round
     const nextMatchup = generateRoundMatchups(
@@ -193,18 +210,17 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
     );
     setCurrentMatchup(nextMatchup);
     setSwapTarget(null);
-    showNotification('success', `Đã lưu lượt ${roundNumber} và sinh lượt ${nextRound}!`);
+    showNotification('success', `Đã chuyển sang lượt #${nextRound} thành công!`);
   };
 
   const handleResetSession = () => {
-    if (window.confirm('Bạn có chắc muốn đặt lại buổi đánh hôm nay (reset lượt và số trận đã chơi)?')) {
-      setSessionStats({});
-      setPartnerHistory({});
-      setRoundNumber(1);
-      setCurrentMatchup(null);
-      setSwapTarget(null);
-      showNotification('info', 'Đã khởi tạo lại buổi đánh mới.');
-    }
+    setSessionStats({});
+    setPartnerHistory({});
+    setRoundNumber(1);
+    setCurrentMatchup(null);
+    setRecordedScores({});
+    setSwapTarget(null);
+    showNotification('info', 'Đã khởi tạo lại buổi đánh mới từ lượt #1.');
   };
 
   const handleSwapClick = (clicked: SelectedSwapTarget) => {
@@ -243,7 +259,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       benchPlayers: newBench,
     });
     setSwapTarget(null);
-    showNotification('success', 'Đã đổi vị trí cầu thủ và cập nhật lại điểm cân bằng!');
+    showNotification('success', 'Đã hoán đổi vị trí và cập nhật chỉ số cân bằng!');
   };
 
   const handlePlayMatch = (court: CourtMatch) => {
@@ -253,6 +269,26 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       t2p1: court.team2[0].id,
       t2p2: court.team2[1].id,
     });
+  };
+
+  const handleQuickSaveScore = (court: CourtMatch, score1: number, score2: number) => {
+    addMatch({
+      groupId: selectedGroupId,
+      date: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+      team1: [court.team1[0].id, court.team1[1].id],
+      team2: [court.team2[0].id, court.team2[1].id],
+      isScoreExact: true,
+      score1,
+      score2,
+    });
+
+    setRecordedScores(prev => ({
+      ...prev,
+      [court.courtIndex]: { score1, score2 },
+    }));
+
+    const courtTitle = court.courtName || `Sân ${court.courtIndex + 1}`;
+    showNotification('success', `Đã lưu kết quả ${courtTitle} (${score1} - ${score2}) vào bảng xếp hạng!`);
   };
 
   return (
@@ -265,6 +301,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       roundNumber={roundNumber}
       sessionStats={sessionStats}
       currentMatchup={currentMatchup}
+      recordedScores={recordedScores}
       swapTarget={swapTarget}
       notification={notification}
       onToggleCheckIn={handleToggleCheckIn}
@@ -275,6 +312,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       onResetSession={handleResetSession}
       onSwapClick={handleSwapClick}
       onPlayMatch={handlePlayMatch}
+      onQuickSaveScore={handleQuickSaveScore}
     />
   );
 }
