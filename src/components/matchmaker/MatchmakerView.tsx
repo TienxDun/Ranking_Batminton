@@ -848,9 +848,6 @@ function CourtCard({
           >
             {court.courtIndex + 1}
           </span>
-          <span className={`text-xs font-bold ${isLight ? 'text-slate-900' : 'text-white'}`}>
-            {court.courtName || `Sân ${court.courtIndex + 1}`}
-          </span>
           {recordedScore ? (
             <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border flex items-center gap-1 ${
               isLight

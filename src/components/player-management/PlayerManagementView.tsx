@@ -1,6 +1,19 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { AlertCircle, CheckCircle2, Layers3, Mars, Minus, Plus, SlidersHorizontal, Trash2, UserPlus, Venus } from 'lucide-react';
+import {
+  AlertCircle,
+  CheckCircle2,
+  Layers3,
+  Mars,
+  Minus,
+  Plus,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+  UserPlus,
+  Venus,
+  Eye,
+} from 'lucide-react';
 import { LeaderboardConfig, Player, PlayerGroup } from '../../types';
 import { DEFAULT_GROUP_ID } from '../../constants/groups';
 import { Button } from '../ui/button';
@@ -364,6 +377,15 @@ function AddPlayerForm({ model }: { model: PlayerManagementViewModel }) {
   );
 }
 
+interface ColumnVisibility {
+  gender: boolean;
+  elo: boolean;
+  group: boolean;
+  status: boolean;
+}
+
+const COLUMN_STORAGE_KEY = 'badminton_player_columns_v2';
+
 function PlayerEloSliderCell({
   player,
   currentElo,
@@ -389,7 +411,7 @@ function PlayerEloSliderCell({
   };
 
   return (
-    <div className="flex items-center justify-center gap-1.5 min-w-[210px] max-w-[250px] mx-auto py-1">
+    <div className="flex items-center justify-center gap-1.5 w-full max-w-[190px] mx-auto py-0.5">
       {/* Nút giảm 10 */}
       <button
         type="button"
@@ -398,9 +420,9 @@ function PlayerEloSliderCell({
           setVal(next);
           commitValue(next);
         }}
-        className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black border transition-all cursor-pointer active:scale-95 shrink-0 ${
+        className={`w-5 h-5 rounded flex items-center justify-center text-[11px] font-black border transition-all cursor-pointer active:scale-90 shrink-0 ${
           isLight
-            ? 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700 hover:bg-teal-50/50 shadow-xs'
+            ? 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700 hover:bg-teal-50/50 shadow-2xs'
             : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-teal-300'
         }`}
         title="Giảm 10 Elo"
@@ -409,25 +431,23 @@ function PlayerEloSliderCell({
       </button>
 
       {/* Thanh trượt ngang */}
-      <div className="flex-1 flex flex-col items-center gap-0.5">
-        <input
-          type="range"
-          min={800}
-          max={2500}
-          step={10}
-          value={val}
-          onChange={e => setVal(parseInt(e.target.value, 10))}
-          onMouseUp={e => commitValue(parseInt((e.target as HTMLInputElement).value, 10))}
-          onTouchEnd={e => commitValue(parseInt((e.target as HTMLInputElement).value, 10))}
-          onKeyUp={e => {
-            if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
-              commitValue(parseInt((e.target as HTMLInputElement).value, 10));
-            }
-          }}
-          className="w-full h-1.5 bg-slate-200 dark:bg-white/15 rounded-lg appearance-none cursor-pointer accent-teal-500"
-          title={`Kéo thanh trượt để chỉnh Elo: ${val}`}
-        />
-      </div>
+      <input
+        type="range"
+        min={800}
+        max={2500}
+        step={10}
+        value={val}
+        onChange={e => setVal(parseInt(e.target.value, 10))}
+        onMouseUp={e => commitValue(parseInt((e.target as HTMLInputElement).value, 10))}
+        onTouchEnd={e => commitValue(parseInt((e.target as HTMLInputElement).value, 10))}
+        onKeyUp={e => {
+          if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
+            commitValue(parseInt((e.target as HTMLInputElement).value, 10));
+          }
+        }}
+        className="flex-1 min-w-[65px] h-1.5 bg-slate-200 dark:bg-white/15 rounded-lg appearance-none cursor-pointer accent-teal-500"
+        title={`Kéo thanh trượt để chỉnh Elo: ${val}`}
+      />
 
       {/* Nút tăng 10 */}
       <button
@@ -437,9 +457,9 @@ function PlayerEloSliderCell({
           setVal(next);
           commitValue(next);
         }}
-        className={`w-6 h-6 rounded-md flex items-center justify-center text-xs font-black border transition-all cursor-pointer active:scale-95 shrink-0 ${
+        className={`w-5 h-5 rounded flex items-center justify-center text-[11px] font-black border transition-all cursor-pointer active:scale-90 shrink-0 ${
           isLight
-            ? 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700 hover:bg-teal-50/50 shadow-xs'
+            ? 'bg-white border-slate-200 text-slate-600 hover:border-teal-400 hover:text-teal-700 hover:bg-teal-50/50 shadow-2xs'
             : 'bg-white/5 border-white/10 text-slate-300 hover:bg-white/10 hover:text-teal-300'
         }`}
         title="Tăng 10 Elo"
@@ -449,7 +469,7 @@ function PlayerEloSliderCell({
 
       {/* Điểm số Elo hiển thị */}
       <span
-        className={`w-13 text-center font-mono font-black text-xs px-1.5 py-0.5 rounded-md border tabular-nums shrink-0 ${
+        className={`w-12 text-center font-mono font-black text-xs px-1 py-0.5 rounded-md border tabular-nums shrink-0 ${
           isLight
             ? 'bg-teal-50 border-teal-200 text-teal-800 shadow-2xs'
             : 'bg-teal-500/10 border-teal-500/25 text-teal-300'
@@ -463,119 +483,266 @@ function PlayerEloSliderCell({
 
 function PlayerTable({ model }: { model: PlayerManagementViewModel }) {
   const { runAdminAction, activeGroups, players, updatePlayer, togglePlayerGroup, handleDeletePlayerClick, isLight } = model;
+  const [searchQuery, setSearchQuery] = React.useState('');
+
+  const [visibleColumns, setVisibleColumns] = React.useState<ColumnVisibility>(() => {
+    try {
+      const saved = localStorage.getItem(COLUMN_STORAGE_KEY);
+      if (saved) return JSON.parse(saved);
+    } catch {}
+    return {
+      gender: true,
+      elo: true,
+      group: false, // Ẩn mặc định để thu gọn bảng
+      status: false, // Ẩn mặc định để thu gọn bảng
+    };
+  });
+
+  const toggleColumn = (key: keyof ColumnVisibility) => {
+    setVisibleColumns(prev => {
+      const next = { ...prev, [key]: !prev[key] };
+      try {
+        localStorage.setItem(COLUMN_STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  };
+
+  const filteredPlayers = React.useMemo(() => {
+    if (!searchQuery.trim()) return players;
+    const q = searchQuery.toLowerCase().trim();
+    return players.filter(p => p.name.toLowerCase().includes(q));
+  }, [players, searchQuery]);
+
   return (
-    <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead className="min-w-[150px] whitespace-nowrap">Tên</TableHead>
-          <TableHead className="w-24 text-center whitespace-nowrap">Giới tính</TableHead>
-          <TableHead className="min-w-[220px] text-center whitespace-nowrap">Elo (Thanh trượt)</TableHead>
-          <TableHead className="min-w-[180px] whitespace-nowrap">Nhóm</TableHead>
-          <TableHead className="w-28 text-center whitespace-nowrap hidden sm:table-cell">Trạng Thái</TableHead>
-          <TableHead className="w-28 text-center whitespace-nowrap">Hành động</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {players.map(p => (
-          <TableRow key={p.id} className={!p.isActive ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
-            <TableCell className="min-w-[150px] whitespace-nowrap">
-              <Input 
-                value={p.name} 
-                onChange={e => runAdminAction(() => updatePlayer(p.id, { name: e.target.value }))}
-                className={`border-transparent hover:border-slate-300 dark:hover:border-white/10 focus:border-teal-500 h-8 bg-transparent px-2 ${
-                  isLight ? 'text-slate-900' : 'text-slate-100'
-                }`}
-              />
-            </TableCell>
-            <TableCell className="text-center whitespace-nowrap">
+    <div className="space-y-2">
+      {/* Thanh bộ lọc & tùy chọn hiển thị cột */}
+      <div className={`p-2.5 sm:p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 ${
+        isLight ? 'bg-slate-50/80 border-slate-200' : 'bg-slate-900/60 border-white/10'
+      }`}>
+        {/* Tìm kiếm người chơi */}
+        <div className="relative flex-1 max-w-xs">
+          <Search className="w-3.5 h-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+          <Input
+            placeholder="Tìm theo tên..."
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            className={`h-8 pl-8 text-xs rounded-lg ${
+              isLight
+                ? 'bg-white border-slate-200 text-slate-800 placeholder:text-slate-400'
+                : 'bg-white/5 border-white/10 text-white placeholder:text-slate-500'
+            }`}
+          />
+        </div>
+
+        {/* Bộ lọc bật/tắt cột */}
+        <div className="flex items-center gap-1.5 flex-wrap">
+          <span className={`text-[11px] font-bold uppercase tracking-wider mr-1 flex items-center gap-1 ${
+            isLight ? 'text-slate-500' : 'text-slate-400'
+          }`}>
+            <SlidersHorizontal className="w-3 h-3 text-teal-500" />
+            Cột:
+          </span>
+
+          {[
+            { key: 'gender', label: 'Giới tính' },
+            { key: 'elo', label: 'Elo' },
+            { key: 'group', label: 'Nhóm' },
+            { key: 'status', label: 'Trạng thái' },
+          ].map(col => {
+            const isVisible = visibleColumns[col.key as keyof ColumnVisibility];
+            return (
               <button
+                key={col.key}
                 type="button"
-                onClick={() => runAdminAction(() => updatePlayer(p.id, { gender: (p.gender || 'male') === 'female' ? 'male' : 'female' }))}
-                className={`inline-flex items-center justify-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-bold border transition-all duration-200 cursor-pointer shadow-sm ${
-                  (p.gender || 'male') === 'female' 
-                    ? 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border-pink-500/20' 
-                    : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border-sky-500/20'
+                onClick={() => toggleColumn(col.key as keyof ColumnVisibility)}
+                className={`text-[11px] px-2.5 py-1 rounded-lg border font-bold transition-all cursor-pointer flex items-center gap-1 active:scale-95 ${
+                  isVisible
+                    ? isLight
+                      ? 'bg-teal-50 border-teal-300 text-teal-800 shadow-2xs font-black'
+                      : 'bg-teal-500/20 border-teal-500/40 text-teal-300 font-black'
+                    : isLight
+                    ? 'bg-white border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300'
+                    : 'bg-white/5 border-white/10 text-slate-500 hover:text-slate-300'
                 }`}
+                title={isVisible ? `Bấm để ẩn cột ${col.label}` : `Bấm để hiện cột ${col.label}`}
               >
-                {(p.gender || 'male') === 'female' ? (
-                  <>
-                    <span>Nữ</span>
-                    <Venus className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </>
-                ) : (
-                  <>
-                    <span>Nam</span>
-                    <Mars className="w-3.5 h-3.5 stroke-[2.5]" />
-                  </>
-                )}
+                <span>{isVisible ? '✓' : '+'}</span>
+                <span>{col.label}</span>
               </button>
-            </TableCell>
-            <TableCell className="text-center whitespace-nowrap">
-              <PlayerEloSliderCell
-                player={p}
-                currentElo={model.playerEloMap[p.id] ?? (p.initialRating ?? 1500)}
-                onUpdateElo={(playerId, val) => runAdminAction(() => model.handleUpdatePlayerElo(playerId, val))}
-                isLight={isLight}
-              />
-            </TableCell>
-            <TableCell>
-              <div className="flex flex-wrap gap-1.5 min-w-[180px]">
-                {activeGroups.map(group => {
-                  const isChecked = (p.groupIds || []).includes(group.id);
-                  return (
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Bảng dữ liệu người chơi thu gọn */}
+      <div className="overflow-x-auto rounded-xl border border-transparent">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="min-w-[140px] whitespace-nowrap">Tên</TableHead>
+              {visibleColumns.gender && (
+                <TableHead className="w-20 text-center whitespace-nowrap">Giới tính</TableHead>
+              )}
+              {visibleColumns.elo && (
+                <TableHead className="w-48 text-center whitespace-nowrap">Elo (Thanh trượt)</TableHead>
+              )}
+              {visibleColumns.group && (
+                <TableHead className="min-w-[160px] whitespace-nowrap">Nhóm</TableHead>
+              )}
+              {visibleColumns.status && (
+                <TableHead className="w-24 text-center whitespace-nowrap">Trạng Thái</TableHead>
+              )}
+              <TableHead className="w-24 text-center whitespace-nowrap">Hành động</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {filteredPlayers.map(p => (
+              <TableRow key={p.id} className={!p.isActive ? 'opacity-60 transition-opacity' : 'transition-opacity'}>
+                {/* Cột Tên (có kèm chỉ báo trạng thái & icon giới tính nếu cột tương ứng bị ẩn) */}
+                <TableCell className="min-w-[140px] whitespace-nowrap py-2">
+                  <div className="flex items-center gap-1.5">
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        p.isActive ? 'bg-emerald-500' : 'bg-slate-400'
+                      }`}
+                      title={p.isActive ? 'Đang chơi' : 'Đã nghỉ'}
+                    />
+                    {!visibleColumns.gender && (
+                      <span
+                        className={`text-xs font-bold shrink-0 ${
+                          (p.gender || 'male') === 'female' ? 'text-pink-500' : 'text-sky-500'
+                        }`}
+                        title={p.gender === 'female' ? 'Nữ' : 'Nam'}
+                      >
+                        {p.gender === 'female' ? '♀' : '♂'}
+                      </span>
+                    )}
+                    <Input 
+                      value={p.name} 
+                      onChange={e => runAdminAction(() => updatePlayer(p.id, { name: e.target.value }))}
+                      className={`border-transparent hover:border-slate-300 dark:hover:border-white/10 focus:border-teal-500 h-8 bg-transparent px-2 ${
+                        isLight ? 'text-slate-900' : 'text-slate-100'
+                      }`}
+                    />
+                  </div>
+                </TableCell>
+
+                {/* Cột Giới tính (Tùy chọn) */}
+                {visibleColumns.gender && (
+                  <TableCell className="text-center whitespace-nowrap py-2">
                     <button
-                      key={group.id}
                       type="button"
-                      onClick={() => togglePlayerGroup(p.id, group.id)}
-                      className={`text-[10px] px-2 py-1 rounded-full border font-bold transition-all cursor-pointer ${
-                        isChecked
-                          ? 'bg-teal-500/15 border-teal-500/30 text-teal-300'
-                          : 'bg-white/5 border-white/10 text-slate-500 hover:text-slate-300'
+                      onClick={() => runAdminAction(() => updatePlayer(p.id, { gender: (p.gender || 'male') === 'female' ? 'male' : 'female' }))}
+                      className={`inline-flex items-center justify-center gap-1 text-[11px] px-2.5 py-1 rounded-full font-bold border transition-all duration-200 cursor-pointer shadow-sm ${
+                        (p.gender || 'male') === 'female' 
+                          ? 'bg-pink-500/10 hover:bg-pink-500/20 text-pink-400 border-pink-500/20' 
+                          : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-400 border-sky-500/20'
                       }`}
                     >
-                      {isChecked ? '✓ ' : ''}{group.name}
+                      {(p.gender || 'male') === 'female' ? (
+                        <>
+                          <span>Nữ</span>
+                          <Venus className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </>
+                      ) : (
+                        <>
+                          <span>Nam</span>
+                          <Mars className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </>
+                      )}
                     </button>
-                  );
-                })}
-              </div>
-            </TableCell>
-            <TableCell className="text-center whitespace-nowrap hidden sm:table-cell">
-              <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border whitespace-nowrap ${
-                p.isActive 
-                  ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
-                  : 'bg-slate-500/10 text-slate-400 border-slate-500/10'
-              }`}>
-                {p.isActive ? 'Đang chơi' : 'Đã nghỉ'}
-              </span>
-            </TableCell>
-            <TableCell className="text-center whitespace-nowrap">
-              <div className="flex items-center justify-center gap-1">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  onClick={() => runAdminAction(() => updatePlayer(p.id, { isActive: !p.isActive }))}
-                  className="text-xs text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 whitespace-nowrap h-8 px-2 cursor-pointer"
-                >
-                  {p.isActive ? 'Ẩn' : 'Hiện'}
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  onClick={() => handleDeletePlayerClick(p)}
-                  className={`h-8 px-2 text-xs cursor-pointer ${
-                    isLight ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-500/10' : 'text-rose-400 hover:text-rose-300 hover:bg-rose-500/10'
-                  }`}
-                  title="Xóa người chơi"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                </Button>
-              </div>
-            </TableCell>
-          </TableRow>
-        ))}
-      </TableBody>
-    </Table>
+                  </TableCell>
+                )}
+
+                {/* Cột Elo (Tùy chọn) */}
+                {visibleColumns.elo && (
+                  <TableCell className="text-center whitespace-nowrap py-2">
+                    <PlayerEloSliderCell
+                      player={p}
+                      currentElo={model.playerEloMap[p.id] ?? (p.initialRating ?? 1500)}
+                      onUpdateElo={(playerId, val) => runAdminAction(() => model.handleUpdatePlayerElo(playerId, val))}
+                      isLight={isLight}
+                    />
+                  </TableCell>
+                )}
+
+                {/* Cột Nhóm (Tùy chọn, ẩn mặc định) */}
+                {visibleColumns.group && (
+                  <TableCell className="py-2">
+                    <div className="flex flex-wrap gap-1.5 min-w-[160px]">
+                      {activeGroups.map(group => {
+                        const isChecked = (p.groupIds || []).includes(group.id);
+                        return (
+                          <button
+                            key={group.id}
+                            type="button"
+                            onClick={() => togglePlayerGroup(p.id, group.id)}
+                            className={`text-[10px] px-2 py-1 rounded-full border font-bold transition-all cursor-pointer ${
+                              isChecked
+                                ? 'bg-teal-500/15 border-teal-500/30 text-teal-300'
+                                : 'bg-white/5 border-white/10 text-slate-500 hover:text-slate-300'
+                            }`}
+                          >
+                            {isChecked ? '✓ ' : ''}{group.name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </TableCell>
+                )}
+
+                {/* Cột Trạng thái (Tùy chọn, ẩn mặc định) */}
+                {visibleColumns.status && (
+                  <TableCell className="text-center whitespace-nowrap py-2">
+                    <span className={`text-xs px-2.5 py-1 rounded-full font-semibold border whitespace-nowrap ${
+                      p.isActive 
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20' 
+                        : 'bg-slate-500/10 text-slate-400 border-slate-500/10'
+                    }`}>
+                      {p.isActive ? 'Đang chơi' : 'Đã nghỉ'}
+                    </span>
+                  </TableCell>
+                )}
+
+                {/* Cột Hành động */}
+                <TableCell className="text-center whitespace-nowrap py-2">
+                  <div className="flex items-center justify-center gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => runAdminAction(() => updatePlayer(p.id, { isActive: !p.isActive }))}
+                      className="text-xs text-teal-400 hover:text-teal-300 hover:bg-teal-500/10 whitespace-nowrap h-8 px-2 cursor-pointer"
+                    >
+                      {p.isActive ? 'Ẩn' : 'Hiện'}
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeletePlayerClick(p)}
+                      className={`h-8 px-2 text-xs cursor-pointer ${
+                        isLight ? 'text-rose-500 hover:text-rose-600 hover:bg-rose-500/10' : 'text-rose-400 hover:text-rose-300 hover:bg-rose-500/10'
+                      }`}
+                      title="Xóa người chơi"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+            {filteredPlayers.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} className="text-center py-6 text-xs text-slate-400">
+                  Không tìm thấy người chơi nào phù hợp với "{searchQuery}"
+                </TableCell>
+              </TableRow>
+            )}
+          </TableBody>
+        </Table>
+      </div>
+    </div>
   );
 }
 

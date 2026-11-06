@@ -33,7 +33,7 @@ export interface RecordedCourtScore {
 }
 
 export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
-  const { players, matches, courts: registeredCourts, selectedGroupId, theme, addMatch, updateMatch, deleteMatch } = useStore();
+  const { players, matches, selectedGroupId, theme, addMatch, updateMatch, deleteMatch } = useStore();
   const isLight = theme === 'light';
 
   // 1. Get players in current group with their computed Elo
@@ -152,10 +152,6 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
     return allAvailablePlayers.filter(p => checkedInIds.includes(p.id));
   }, [allAvailablePlayers, checkedInIds]);
 
-  const courtNames = useMemo(() => {
-    return registeredCourts.map(c => c.name);
-  }, [registeredCourts]);
-
   // Handlers
   const handleToggleCheckIn = (id: string) => {
     setCheckedInIds(prev => (prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]));
@@ -178,8 +174,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       checkedInPlayers,
       numCourts,
       sessionStats,
-      partnerHistory,
-      courtNames
+      partnerHistory
     );
     setCurrentMatchup(result);
     setRecordedScores({});
@@ -208,8 +203,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       checkedInPlayers,
       numCourts,
       updatedStats,
-      updatedHistory,
-      courtNames
+      updatedHistory
     );
     setCurrentMatchup(nextMatchup);
     setSwapTarget(null);
@@ -389,8 +383,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
       court.courtIndex,
       currentMatchup,
       sessionStats,
-      partnerHistory,
-      courtNames
+      partnerHistory
     );
 
     setSessionStats(newStats);
@@ -405,7 +398,7 @@ export default function Matchmaker({ onFillMatch }: MatchmakerProps) {
     });
     setSwapTarget(null);
 
-    const courtTitle = court.courtName || `Sân ${court.courtIndex + 1}`;
+    const courtTitle = `Sân ${court.courtIndex + 1}`;
     showNotification('success', `Đã lưu kết quả & bốc xong trận mới cho ${courtTitle}!`);
   };
 
